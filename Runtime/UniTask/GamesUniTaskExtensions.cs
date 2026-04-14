@@ -1,6 +1,6 @@
 // Copyright (c) BizSim Game Studios. All rights reserved.
 
-#if UNITASK_AVAILABLE
+#if BIZSIM_UNITASK
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using UnityEngine;

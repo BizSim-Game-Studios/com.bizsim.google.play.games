@@ -12,13 +12,13 @@
     "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [
-        "UNITASK_AVAILABLE"
+        "BIZSIM_UNITASK"
     ],
     "versionDefines": [
         {
             "name": "com.cysharp.unitask",
             "expression": "",
-            "define": "UNITASK_AVAILABLE"
+            "define": "BIZSIM_UNITASK"
         }
     ],
     "noEngineReferences": false
