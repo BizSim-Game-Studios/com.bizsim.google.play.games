@@ -8,8 +8,8 @@ namespace BizSim.Google.Play.Games
     /// </summary>
     internal static class PackageVersion
     {
-        public const string Version = "1.15.6";
-        public const string ReleaseDate = "2026-03-14";
+        public const string Version = "1.0.0";
+        public const string ReleaseDate = "2026-04-14";
         public const string PgsV2SdkVersion = "21.0.0";
     }
 }
