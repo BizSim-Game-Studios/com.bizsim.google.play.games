@@ -1,0 +1,38 @@
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# IDE / Editor
+.idea/
+.vs/
+.vscode/
+*.sln
+*.csproj
+*.suo
+*.user
+
+# Unity generated
+Library/
+Temp/
+Logs/
+obj/
+Build/
+
+# Android build artifacts
+*.apk
+*.aab
+*.aar
+*.jar
+.gradle/
+build/
+local.properties
+
+# Development plans (local only)
+DevelopmentPlans/
+
+# Research cache
+.firecrawl/
+
+# MCP server data
+.serena/

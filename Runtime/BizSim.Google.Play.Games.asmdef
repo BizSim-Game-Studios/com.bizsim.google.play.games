@@ -1,0 +1,20 @@
+{
+    "name": "BizSim.Google.Play.Games",
+    "rootNamespace": "BizSim.Google.Play.Games",
+    "references": [],
+    "includePlatforms": ["Android", "Editor"],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.google.firebase.analytics",
+            "expression": "",
+            "define": "BIZSIM_FIREBASE"
+        }
+    ],
+    "noEngineReferences": false
+}

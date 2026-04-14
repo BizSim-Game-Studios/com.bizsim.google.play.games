@@ -1,0 +1,25 @@
+{
+    "name": "BizSim.Google.Play.Games.UniTask",
+    "rootNamespace": "BizSim.Google.Play.Games.UniTask",
+    "references": [
+        "BizSim.Google.Play.Games",
+        "UniTask"
+    ],
+    "includePlatforms": ["Android", "Editor"],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "UNITASK_AVAILABLE"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.cysharp.unitask",
+            "expression": "",
+            "define": "UNITASK_AVAILABLE"
+        }
+    ],
+    "noEngineReferences": false
+}
