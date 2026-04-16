@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `GamesConfiguration` EditorWindow under BizSim > Google Play > Games > Configuration with Settings, Firebase, and Links tabs
 - `GamesEditorInit` registers `BIZSIM_GAMES_INSTALLED` scripting define via `BizSimDefineManager` on domain reload
 
+### Fixed
+- Add missing `.meta` files for `GamesConfiguration.cs` and `GamesEditorInit.cs`
+
 ## [1.0.1] - 2026-04-15
 
 ### Fixed
