@@ -1,0 +1,18 @@
+{
+  "name": "BizSim.Google.Play.Games.Samples.MockPresets",
+  "rootNamespace": "BizSim.Google.Play.Games.Samples",
+  "references": [
+    "BizSim.Google.Play.Games"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

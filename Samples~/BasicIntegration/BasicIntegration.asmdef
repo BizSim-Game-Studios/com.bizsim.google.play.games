@@ -1,0 +1,19 @@
+{
+  "name": "BizSim.Google.Play.Games.Samples.BasicIntegration",
+  "rootNamespace": "BizSim.Google.Play.Games.Samples",
+  "references": [
+    "BizSim.Google.Play.Games"
+  ],
+  "includePlatforms": [
+    "Android",
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
