@@ -2,7 +2,7 @@
     "name": "BizSim.Google.Play.Games",
     "rootNamespace": "BizSim.Google.Play.Games",
     "references": [],
-    "includePlatforms": ["Android", "Editor"],
+    "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,
