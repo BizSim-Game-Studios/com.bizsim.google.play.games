@@ -9,16 +9,28 @@ using UnityEngine;
 namespace BizSim.Google.Play.Games.Editor
 {
     /// <summary>
-    /// Injects Google Play Games Services v2 dependency into Gradle build.
-    /// Runs before Android build to ensure play-services-games-v2 is available.
-    ///
-    /// Strategy:
-    /// 1. Ensure mainTemplate.gradle exists (copy from Unity defaults if missing)
-    /// 2. Ensure settingsTemplate.gradle exists for Unity 6+
-    /// 3. Inject repositories into settingsTemplate (or mainTemplate for legacy)
-    /// 4. Inject dependency into mainTemplate
-    /// 5. Never throws BuildFailedException — handles everything in a single pass
+    /// Legacy Gradle-template injector for Play Games Services v2.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Deprecated as of 1.3.0.</b> Dependency resolution now runs through the External
+    /// Dependency Manager for Unity (EDM4U), declared in <c>Editor/Dependencies.xml</c> and
+    /// pinned via <c>package.json</c> (<c>com.google.external-dependency-manager: 1.2.187</c>).
+    /// Consumers should run <b>Assets → External Dependency Manager → Android Resolver →
+    /// Force Resolve</b> after install; that is the supported path from 1.3.0 onward.
+    /// </para>
+    /// <para>
+    /// This class is kept for consumers who cannot install EDM4U (air-gapped environments,
+    /// legacy CI pipelines). It still injects <c>com.google.android.gms:play-services-games-v2:21.0.0</c>
+    /// into <c>mainTemplate.gradle</c> at build time. When EDM4U is also present, both paths
+    /// are idempotent (the Gradle injector short-circuits when the dependency string is already
+    /// present in the template), so there is no double-include risk.
+    /// </para>
+    /// <para>
+    /// Scheduled for removal in <b>2.0.0</b> per ADR-009.
+    /// </para>
+    /// </remarks>
+    [System.Obsolete("Gradle-template injection superseded by EDM4U (Editor/Dependencies.xml). Kept as fallback for air-gapped environments. Removed in 2.0.0 per ADR-009.", error: false)]
     public class GradleDependencyInjector : IPreprocessBuildWithReport
     {
         public int callbackOrder => 0;

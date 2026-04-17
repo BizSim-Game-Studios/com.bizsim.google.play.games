@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-04-17
+
+### Added
+- **K2 enterprise Settings asset (Plan B).** New `GamesSettings` `ScriptableObject` at `Runtime/Core/GamesSettings.cs` with the four CROSS-INVARIANTS §12 base fields: `LogsEnabled`, `LogLevel`, `UseMockInDevelopmentBuild`, `EnableAnalyticsByDefault`. Path constants `ResourcesLoadKey = "BizSim/GooglePlay/GamesSettings"` and `AssetDatabasePath` per §12.5. Auto-loaded by `BizSimGamesLogger` on first call via `Resources.Load`. Distinct from the legacy `GamesServicesConfig` operational asset (service toggles, JNI timeouts, mock behavior); the two may be consolidated in 2.0.0.
+- **C3.1 + C3.5 EDM4U dependency declaration (Plan B).** `Editor/Dependencies.xml` now declares `com.google.android.gms:play-services-games-v2:21.0.0` for EDM4U resolution. `package.json` `dependencies` pins `com.google.external-dependency-manager: 1.2.187` per `unity-package-standards.md` §"EDM4U as a declared package.json dependency". Consumers with the OpenUPM scoped registry installed will get EDM4U auto-installed on first package import.
+
+### Changed
+- **K1.3 `BizSimGamesLogger` visibility and Settings integration (Plan B).** Class and members promoted from `internal` to `public` so consumer code and external test assemblies can call `BizSimGamesLogger.Info` / `Warning` / `Error` directly per `google-play-bridge-pattern.md` §6.1. `LogsEnabled` and `LogLevel` now read from the new `GamesSettings` asset (cached after first call); when the asset is absent, the logger falls back to compile-time defaults and emits a one-shot warning. The master switch (`LogsEnabled`) is checked BEFORE the `LogLevel` threshold — when `false`, every call is a no-op regardless of severity. `#if UNITY_EDITOR InvalidateCache()` added so Configuration-window Apply takes effect without a domain reload.
+
+### Deprecated
+- **`GradleDependencyInjector` is now `[Obsolete]`.** EDM4U via `Editor/Dependencies.xml` is the supported resolution path from 1.3.0 onward. The Gradle-template injector is kept functional as a fallback for air-gapped environments; both paths are idempotent when co-present. Scheduled for removal in 2.0.0 per ADR-009.
+
+### Removed
+- **`BizSimGamesLogger.MinLevel` internal property** (replaced by `GamesSettings.LogLevel`). The field was never exposed outside the assembly, so no consumer impact is expected.
+
 ## [1.2.2] - 2026-04-17
 
 ### Fixed
