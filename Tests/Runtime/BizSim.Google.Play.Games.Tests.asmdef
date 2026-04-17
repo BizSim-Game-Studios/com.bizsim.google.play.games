@@ -1,0 +1,20 @@
+{
+    "name": "BizSim.Google.Play.Games.Tests",
+    "rootNamespace": "BizSim.Google.Play.Games.Tests",
+    "references": [
+        "BizSim.Google.Play.Games"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -16,7 +16,7 @@ namespace BizSim.Google.Play.Games
 
     internal static class BizSimGamesLogger
     {
-        private const string Prefix = "[PlayGames]";
+        internal const string Prefix = "[BizSim.Games] ";
 
         internal static LogLevel MinLevel { get; set; } = LogLevel.Verbose;
 
@@ -32,26 +32,26 @@ namespace BizSim.Google.Play.Games
         {
             if (!IsDebugBuild && !ForceDebug) return;
             if (MinLevel <= LogLevel.Verbose)
-                Debug.Log($"{Prefix} [V] {message}");
+                Debug.Log($"{Prefix}[V] {message}");
         }
 
         internal static void Info(string message)
         {
             if (!IsDebugBuild && !ForceDebug) return;
             if (MinLevel <= LogLevel.Info)
-                Debug.Log($"{Prefix} {message}");
+                Debug.Log($"{Prefix}{message}");
         }
 
         internal static void Warning(string message)
         {
             if (MinLevel <= LogLevel.Warning)
-                Debug.LogWarning($"{Prefix} {message}");
+                Debug.LogWarning($"{Prefix}{message}");
         }
 
         internal static void Error(string message)
         {
             if (MinLevel <= LogLevel.Error)
-                Debug.LogError($"{Prefix} {message}");
+                Debug.LogError($"{Prefix}{message}");
         }
     }
 }
