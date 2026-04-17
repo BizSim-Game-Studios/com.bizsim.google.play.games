@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2026-04-17
+
+### Fixed
+- **`PackageVersion.cs` finally contains the K8 canonical const fields declared in the 1.2.0 CHANGELOG.** v1.2.0 commit skipped the `PackageVersion.cs` edit due to a tool-call race (file-not-read-yet aborted the write, retry was not performed). The 1.2.0 tag has correct `package.json.version` and `CHANGELOG` entry but `PackageVersion.Current` stayed at `"1.1.0"` and the three new `NativeSdk*` consts were missing. This PATCH ships the actual const additions. **Consumers on 1.2.0 should upgrade to 1.2.1.**
+
 ## [1.2.0] - 2026-04-17
 
 ### Added
