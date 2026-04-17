@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-04-17
+
+### Added
+- Real sample scripts for all features under `Samples~/` (Auth, Achievements, Leaderboards, Cloud Save, Events, Player Stats). Each sample is a runnable `BasicIntegration` scene demonstrating the typical flow without requiring a configured Play Console.
+- `Tests/Runtime/BizSim.Google.Play.Games.Tests` test assembly (previously missing) plus `BizSimLoggerPrefixTest` drift guard asserting `BizSimGamesLogger.Prefix` matches the workspace-mandated `"[BizSim.Games] "` literal per CROSS-PACKAGE-INVARIANTS §12.3.
+
+### Fixed
+- `BizSimGamesLogger.Prefix` corrected from `"[PlayGames]"` to `"[BizSim.Games] "` (with trailing space) per CROSS-PACKAGE-INVARIANTS §12.3 / google-play-bridge-pattern.md §6.1. K1.1 compliance restored. Visibility adjusted `private` → `internal` so the new test assembly can read it via `InternalsVisibleTo`. Four call sites (`Verbose/Info/Warning/Error` methods) had explicit post-prefix spaces that compensated for the previous no-trailing-space literal; those explicit spaces are removed so output format remains `[BizSim.Games] <message>` (single space) rather than `[BizSim.Games]  <message>` (double space).
+
 ## [1.0.2] - 2026-04-16
 
 ### Added
