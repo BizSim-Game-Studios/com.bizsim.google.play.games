@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-04-17
+
+### Added
+- **K8 PackageVersion schema unification (Plan G).** Three new `public const string` fields on `PackageVersion`: `NativeSdkVersion` (`"21.0.0"`), `NativeSdkLabel` (`"Play Games Services v2"`), `NativeSdkArtifactCoord` (`"com.google.android.gms:play-services-games-v2:21.0.0"`). The new `NativeSdkLabel` disambiguates Games (GMS family, `com.google.android.gms:*`) from sibling Play Core packages (review/appupdate/assetdelivery, `com.google.android.play:*`) — fixes the dashboard showing a misleading "Play Core: 21.0.0" label for this package. See `development-plans/plans/2026-04-17-enterprise-quality-bar/06-conventions/06-package-version-schema.md`.
+- `PackageVersionSchemaTest` drift guard.
+
+### Deprecated
+- `PackageVersion.PgsV2SdkVersion` — now `[Obsolete]` alias of `NativeSdkVersion`. Removed in 2.0.0 per ADR-009.
+
 ## [1.1.0] - 2026-04-17
 
 ### Added
