@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.2] - 2026-04-17
+
+### Fixed
+- **C5.2 compliance (Plan E).** `Plugins/Android/GamesServicesBridge.androidlib/src/main/AndroidManifest.xml` now explicitly declares `android:enableOnBackInvokedCallback="true"`. All PGS v2 dialogs (Auth, Achievements, Leaderboards, Saved Games, Events, Player Stats) are system-managed and handle predictive-back animations (Android 14+ / API 34+) internally. Added `PredictiveBackManifestTest` drift guard. See `development-plans/plans/2026-04-17-enterprise-quality-bar/06-conventions/05-predictive-back-audit.md`.
+
 ## [1.2.1] - 2026-04-17
 
 ### Fixed
