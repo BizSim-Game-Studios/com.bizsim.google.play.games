@@ -1,7 +1,7 @@
 {
   "name": "com.bizsim.google.play.games",
   "displayName": "BizSim Google Play Games Services",
-  "description": "Unity package for Google Play Games Services v2 (play-services-games-v2:21.0.0). Modular async API for Authentication, Achievements, Leaderboards, Cloud Save, Events, and Player Stats — ISocialPlatform-independent.",
+  "description": "Unity package for Google Play Games Services v2. Modular async Java-to-C# wrapper for authentication, achievements, leaderboards, saved games, events, and player stats. ISocialPlatform-independent with a mock provider for editor testing.",
   "version": "1.3.0",
   "unity": "6000.0",
   "changelogUrl": "https://github.com/BizSim-Game-Studios/com.bizsim.google.play.games/blob/main/CHANGELOG.md",
