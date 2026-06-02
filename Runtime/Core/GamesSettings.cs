@@ -18,7 +18,7 @@ namespace BizSim.Google.Play.Games
     /// The two assets MAY be consolidated in a future 2.0.0 release.
     /// </remarks>
     [CreateAssetMenu(
-        menuName = "BizSim/Google Play/Games Settings",
+        menuName = "BizSim/Google Play Service/Games Settings",
         fileName = "GamesSettings",
         order = 0)]
     public sealed class GamesSettings : ScriptableObject

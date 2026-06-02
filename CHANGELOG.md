@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2026-06-02
+
+### Fixed
+- **CS0618 obsolete-symbol warning** in the `GamesConfiguration` editor window — the SDK-version label read `PackageVersion.PgsV2SdkVersion` (an `[Obsolete]` alias). Now resolved via a reflection helper that prefers the canonical `NativeSdkVersion` and never names the obsolete symbol, matching the shipped pattern in the review/appupdate/assetdelivery siblings.
+- **Missing `.meta` files** for `PackageVersionSchemaTest` and `PredictiveBackManifestTest` added (the `.cs` sources had landed without their sibling `.meta` companions, risking GUID churn on fresh imports).
+
+### Changed
+- **`CreateAssetMenu` menu paths unified** to `BizSim/Google Play Service/...` for both `GamesServicesConfig` and `GamesSettings`, matching the review/appupdate/assetdelivery sibling convention (previously inconsistent: one used `Google Play Games`, the other `Google Play`). No effect on existing serialized assets — `menuName` only controls the create-menu location.
+
 ## [1.3.0] - 2026-04-17
 
 ### Added

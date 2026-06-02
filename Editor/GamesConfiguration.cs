@@ -1,5 +1,6 @@
 // Copyright (c) BizSim Game Studios. All rights reserved.
 
+using System.Reflection;
 using BizSim.Google.Play.Editor.Core;
 using UnityEditor;
 using UnityEngine;
@@ -39,13 +40,22 @@ namespace BizSim.Google.Play.Games.Editor
             EditorGUILayout.EndScrollView();
         }
 
+        private static string ResolveNativeSdkVersion()
+        {
+            const BindingFlags F = BindingFlags.Public | BindingFlags.Static;
+            var t = typeof(PackageVersion);
+            var f = t.GetField("NativeSdkVersion", F)
+                 ?? t.GetField("PgsV2SdkVersion", F);
+            return f?.GetRawConstantValue() as string ?? "unknown";
+        }
+
         private void DrawSettingsTab()
         {
             EditorGUILayout.LabelField("Games Services Settings", EditorStyles.boldLabel);
             EditorGUILayout.Space(4);
 
             EditorGUILayout.LabelField("Package Version:", PackageVersion.Current);
-            EditorGUILayout.LabelField("Play Games SDK:", PackageVersion.PgsV2SdkVersion);
+            EditorGUILayout.LabelField("Play Games SDK:", ResolveNativeSdkVersion());
 
             EditorGUILayout.Space(8);
             EditorGUILayout.HelpBox(

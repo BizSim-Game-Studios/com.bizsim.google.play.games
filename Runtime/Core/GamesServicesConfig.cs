@@ -7,7 +7,7 @@ namespace BizSim.Google.Play.Games
 {
     [CreateAssetMenu(
         fileName = "GamesServicesConfig",
-        menuName = "BizSim/Google Play Games/Services Config")]
+        menuName = "BizSim/Google Play Service/Services Config")]
     public class GamesServicesConfig : ScriptableObject
     {
         [Header("Service Toggles")]
