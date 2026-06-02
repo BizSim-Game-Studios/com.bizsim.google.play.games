@@ -2,285 +2,149 @@
 
 [![Unity 6000.0+](https://img.shields.io/badge/Unity-6000.0%2B-blue.svg)](https://unity.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE.md)
-[![Version](https://img.shields.io/badge/Version-1.0.0-orange.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-1.3.1-orange.svg)](CHANGELOG.md)
 
-**Unity bridge for Google Play Games Services v2**
+Unity bridge for [Google Play Games Services v2](https://developer.android.com/games/pgs/unity/unity-start) (play-services-games-v2:21.0.0).
+Modular async Java-to-C# wrapper for authentication, achievements, leaderboards, saved games, events, and player stats, with an editor mock provider.
 
-> **⚠️ Unofficial package.** This is a community-built Unity bridge for [Google Play Games Services v2](https://developers.google.com/games/services). It is **not** an official Google product.
+> **⚠️ Unofficial package.** This is a community-built Unity bridge for Google Play Games Services v2. It is **not** an official Google product.
 
-Package id: `com.bizsim.google.play.games`
-Version: **1.0.0**
-Unity: 6000.0+
-Platform: Android
-License: MIT (package code) — see [Third-Party Licenses](#-third-party-licenses) for SDK terms
+## Features
 
----
+- **Authentication** — Silent + manual sign-in with PGS v2, server-side access tokens
+- **Achievements** — Unlock, increment, reveal, batch operations, local caching
+- **Leaderboards** — Submit scores, load top/player-centered rankings, scoretags
+- **Cloud Save** — Transaction-based saved games with metadata, cover image, conflict resolution
+- **Events** — Batched event tracking with 5-second flush interval, pause/quit flush
+- **Player Stats** — Churn prediction, spend probability, engagement metrics
+- **Mock provider** — ScriptableObject presets covering authenticated, guest, and error scenarios for editor + non-Android builds
+- **Analytics adapter** — Optional `IGamesAnalyticsAdapter` with a Firebase implementation guarded by `BIZSIM_FIREBASE`
+- **UniTask support** — Optional extension assembly guarded by `BIZSIM_UNITASK`
+- **Editor integration** — Auto-registered `BIZSIM_GAMES_INSTALLED` define via `editor.core`
 
-## Table of Contents
+## Installation
 
-- [Features](#-features)
-- [Sidekick Integration](#-sidekick-integration)
-- [Google Play Compliance](#-critical-google-play-compliance-requirements)
-- [Installation](#-installation)
-- [Quick Start](#-quick-start)
-- [Documentation](#-documentation)
-- [Architecture](#-architecture)
-- [Troubleshooting](#-troubleshooting)
-- [License](#-license)
-- [Terms of Service](#-terms-of-service-compliance-notice)
+This package depends on Google's [External Dependency Manager for Unity (EDM4U)](https://github.com/googlesamples/unity-jar-resolver), which is published to the OpenUPM scoped registry. Add EDM4U's registry to your project's `Packages/manifest.json` once, then add this package as a Git URL — UPM will auto-install EDM4U on first import.
 
----
-
-## 🚀 Features
-
-- ✅ **Authentication** - Silent + manual sign-in with PGS v2, server-side access tokens
-- ✅ **Achievements** - Unlock, increment, reveal, batch operations, local caching
-- ✅ **Leaderboards** - Submit scores, load top/player-centered rankings, scoretags
-- ✅ **Cloud Save** - Transaction-based saved games with metadata, cover image, conflict resolution
-- ✅ **Events** - Batched event tracking with 5s flush interval, pause/quit flush
-- ✅ **Player Stats** - Churn prediction, spend probability, engagement metrics
-- ✅ **Sidekick Ready** - Unified config, readiness validator, Tier 1 & 2 compliance
-
----
-
-## 🤖 Sidekick Integration
-
-This package supports Google Play's Sidekick AI assistant. Use `GamesServicesConfig` to configure services and the **Sidekick Readiness Check** editor window to validate compliance.
-
-| Tier | Requirements | Deadline |
-|------|-------------|----------|
-| Tier 1 | Auth + 10+ Achievements | July 2026 |
-| Tier 2 | Tier 1 + Cloud Save with metadata | November 2026 |
-
-```csharp
-// Save with full Sidekick metadata
-var metadata = new SaveGameMetadata
-{
-    description = "Level 5 - Factory District",
-    playedTimeMillis = totalPlayTimeMs,
-    coverImage = screenshotPngBytes,  // max 800KB, 640x360
-    progressValue = 45
-};
-await GamesServicesManager.CloudSave.SaveAsync("slot1", data, metadata);
-
-// Track events
-await GamesServicesManager.Events.IncrementEventAsync("vehicle_dismantled", 1);
-```
-
-See `Documentation~/SIDEKICK-GUIDE.md` for full integration guide.
-
----
-
-## ⚠️ CRITICAL: Google Play Compliance Requirements
-
-**Before publishing your game, you MUST comply with Google Play Games Services policies.**
-Failure to comply may result in **app rejection or removal from Google Play Store**.
-
-### 📋 Required Policies
-
-| Policy | Key Requirements | Link |
-|--------|------------------|------|
-| **Quality Checklist** | • Manual sign-in button if auto-auth fails<br>• 10+ achievements (4+ achievable in 1 hour)<br>• Achievement icons: 512x512 PNG<br>• **Saved games MUST have cover image, description, timestamp** | [Quality Checklist](https://developer.android.com/games/pgs/quality) |
-| **Branding Guidelines** | • Use Google Play game controller icon for all UI entry points<br>• **NEVER suppress pop-ups** (welcome back, achievement unlock)<br>• **NEVER include "Google Play Games" in your game TITLE** | [Branding Guidelines](https://developer.android.com/games/pgs/branding) |
-| **Data Collection** | • Friends data: **30-DAY MAX retention** (delete or refresh)<br>• Friends data: **ONLY for friends list UI** (NOT analytics/advertising)<br>• Complete Google Play Data Safety form accurately | [Data Collection](https://developer.android.com/games/pgs/data-collection) |
-| **Terms of Service** | • **NEVER submit false gameplay data**<br>• **NEVER send multiplayer invites without user approval**<br>• **NEVER use player data for advertising**<br>• **NEVER share friends data with third parties** | [Terms of Service](https://developer.android.com/games/pgs/terms) |
-
-### 🔥 Most Critical Rules
-
-1. **Saved Games Metadata (Quality 6.1)**: MUST include cover image, description, and timestamp
-   → Use `CommitSnapshotAsync()` with all 3 parameters (NOT simplified `SaveAsync()`)
-
-2. **Friends Data Retention (Data Collection)**: 30-day maximum
-   → If implementing Phase 6 (Friends), add auto-delete after 30 days
-
-3. **Pop-up Suppression (Branding)**: NEVER interrupt Google's welcome/achievement pop-ups
-   → Don't hide/dismiss/overlay these notifications
-
-4. **Achievement Icons (Quality 2.4)**: 512x512 PNG on transparent background
-   → Configure in Google Play Console, NOT in Unity package
-
----
-
-## 📦 Installation
-
-### Option 1: Git URL (recommended)
-
-1. In Unity Editor: **Window > Package Manager > + > Add package from git URL...**
-2. Enter:
-   ```
-   https://github.com/BizSim-Game-Studios/com.bizsim.google.play.games.git
-   ```
-
-3. Or add directly to `Packages/manifest.json`:
-   ```json
-   "com.bizsim.google.play.games": "https://github.com/BizSim-Game-Studios/com.bizsim.google.play.games.git"
-   ```
-
-### Option 2: Local path
+**Step 1 — Add the OpenUPM scoped registry (one-time per project):**
 
 ```json
-"com.bizsim.google.play.games": "file:../path/to/com.bizsim.google.play.games"
-```
-
-### After Installation
-
-1. Get your resources XML from [Google Play Console](https://play.google.com/console)
-2. Open the setup window: **BizSim > Google Play > Games Services > Setup**
-3. Paste the XML and click "Setup" to configure your Android project
-
----
-
-## 🎮 Quick Start
-
-### 1. Setup (Editor Window)
-```
-Unity Menu → BizSim → Google Play → Games Services → Setup
-```
-1. Get resources XML from Google Play Console
-2. Paste XML and parse configuration
-3. Click "Setup" to configure Android project
-
-### 2. Authentication
-```csharp
-using BizSim.Google.Play.Games;
-
-void Start()
 {
-    GamesServicesManager.Initialize();
-    GamesServicesManager.Auth.OnAuthenticationSuccess += OnAuthSuccess;
-    GamesServicesManager.Auth.OnAuthenticationFailed += OnAuthFailed;
-}
-
-async void AuthenticateUser()
-{
-    try {
-        var player = await GamesServicesManager.Auth.AuthenticateAsync();
-        Debug.Log($"Welcome {player.DisplayName}!");
-    } catch (GamesAuthException ex) {
-        Debug.LogError($"Auth failed: {ex.Error.Message}");
+  "scopedRegistries": [
+    {
+      "name": "package.openupm.com",
+      "url": "https://package.openupm.com",
+      "scopes": [
+        "com.google.external-dependency-manager"
+      ]
     }
+  ]
 }
 ```
 
-### 3. Achievements
-```csharp
-// Unlock achievement
-await GamesServicesManager.Achievements.UnlockAchievementAsync("achievement_first_win");
+If you already have other OpenUPM-distributed packages, you may already have this registry — just add `com.google.external-dependency-manager` to the existing `scopes` array.
 
-// Increment incremental achievement
-await GamesServicesManager.Achievements.IncrementAchievementAsync("achievement_100_wins", 1);
+**Step 2 — Install this package via Git URL:**
 
-// Show achievements UI
-await GamesServicesManager.Achievements.ShowAchievementsUIAsync();
+```json
+{
+  "dependencies": {
+    "com.bizsim.google.play.games": "https://github.com/BizSim-Game-Studios/com.bizsim.google.play.games.git#v1.3.1"
+  }
+}
 ```
 
-### 4. Leaderboards
-```csharp
-// Submit score
-await GamesServicesManager.Leaderboards.SubmitScoreAsync("leaderboard_high_score", 12345);
+After the package imports, EDM4U is automatically resolved by UPM — no manual `.unitypackage` import required. EDM4U then resolves the Android Maven dependencies declared in `Editor/Dependencies.xml` (`com.google.android.gms:play-services-games-v2:21.0.0` and `com.google.android.gms:play-services-tasks:18.4.1`) at the next Android build, or immediately via `Assets → External Dependency Manager → Android Resolver → Force Resolve`.
 
-// Show leaderboard UI
-await GamesServicesManager.Leaderboards.ShowLeaderboardUIAsync("leaderboard_high_score");
-```
+## Quick Start
 
-### 5. Cloud Save (COMPLIANCE: Use full API with metadata!)
-```csharp
-// ✅ CORRECT: Full compliance with cover image, description, timestamp
-var handle = await GamesServicesManager.CloudSave.OpenSnapshotAsync("slot1", true);
-byte[] saveData = SerializeGameState();
-byte[] screenshot = CaptureScreenshot(); // REQUIRED by Quality Checklist 6.1
+1. Get your resources XML from [Google Play Console](https://play.google.com/console) and run the setup window: **BizSim → Google Play → Games Services → Setup**. Paste the XML and click "Setup".
 
-await GamesServicesManager.CloudSave.CommitSnapshotAsync(
-    handle,
-    saveData,
-    description: "Level 5, 1500 coins",  // REQUIRED
-    playedTimeMillis: GetPlayTime(),      // REQUIRED
-    coverImage: screenshot                // REQUIRED
-);
+2. Initialize and authenticate:
+   ```csharp
+   using BizSim.Google.Play.Games;
 
-// ❌ WRONG: Simplified API lacks required metadata (non-compliant!)
-await GamesServicesManager.CloudSave.SaveAsync("slot1", saveData); // Missing cover image!
-```
+   void Start()
+   {
+       GamesServicesManager.Initialize();
+   }
 
-### 6. Player Stats
-```csharp
-var stats = await GamesServicesManager.Stats.LoadPlayerStatsAsync();
-Debug.Log($"Churn probability: {stats.churnProbability}");
-Debug.Log($"High spender probability: {stats.highSpenderProbability}");
-```
+   async void AuthenticateUser()
+   {
+       var player = await GamesServicesManager.Auth.AuthenticateAsync();
+       Debug.Log($"Welcome {player.DisplayName}!");
+   }
+   ```
 
----
+3. Unlock an achievement and submit a leaderboard score:
+   ```csharp
+   await GamesServicesManager.Achievements.UnlockAchievementAsync("achievement_first_win");
+   await GamesServicesManager.Leaderboards.SubmitScoreAsync("leaderboard_high_score", 12345);
+   ```
 
-## 📚 Documentation
+4. Save game with required metadata (see Google Play compliance note below):
+   ```csharp
+   var handle = await GamesServicesManager.CloudSave.OpenSnapshotAsync("slot1", true);
+   await GamesServicesManager.CloudSave.CommitSnapshotAsync(
+       handle,
+       data:              SerializeGameState(),
+       description:       "Level 5, 1500 coins",   // required by Quality Checklist 6.1
+       playedTimeMillis:  GetPlayTime(),            // required
+       coverImage:        CaptureScreenshot()       // required
+   );
+   ```
 
-- **Setup Guide**: Unity Editor → `BizSim/Google Play/Games Services/Setup`
-- **API Reference**: Unity Editor → `BizSim/Google Play/Games Services/Documentation`
-- **Development Plan**: `docs/development-plans/google-play-games/00-INDEX.md`
-- **Official PGS Docs**: https://developers.google.com/games/services
+## Google Play Compliance Requirements
 
----
+**Before publishing, you MUST comply with Google Play Games Services policies.** Failure to comply may result in app rejection or removal from Google Play Store.
 
-## 🛡️ Architecture
+| Policy | Key Requirements |
+|--------|-----------------|
+| [Quality Checklist](https://developer.android.com/games/pgs/quality) | Manual sign-in button if auto-auth fails; 10+ achievements (4+ achievable in 1 hour); achievement icons 512×512 PNG; saved games MUST include cover image, description, and timestamp |
+| [Branding Guidelines](https://developer.android.com/games/pgs/branding) | Use Google Play game controller icon for all UI entry points; NEVER suppress welcome-back or achievement-unlock pop-ups; NEVER include "Google Play Games" in your game title |
+| [Data Collection](https://developer.android.com/games/pgs/data-collection) | Friends data: 30-day maximum retention; friends data ONLY for friends-list UI (not analytics or advertising); complete the Google Play Data Safety form accurately |
+| [Terms of Service](https://developer.android.com/games/pgs/terms) | Never submit false gameplay data; never send multiplayer invites without user approval; never use player data for advertising; never share friends data with third parties |
 
-- **Platform Abstraction**: Android JNI ↔ Editor Mock providers
-- **Async/Await**: Modern C# pattern (no callbacks)
-- **Event-Driven**: Success/error events for all services
-- **ProGuard-Safe**: AndroidJavaProxy callbacks with keep rules
-- **Conflict Resolution**: Automatic with 60s timeout protection
-- **Local Caching**: Achievements cached in PlayerPrefs (24h TTL)
+## Requirements
 
----
+- Unity 6000.0 or later
+- Android target platform
+- **[EDM4U](https://github.com/googlesamples/unity-jar-resolver) (External Dependency Manager for Unity)** — auto-resolved via OpenUPM scoped registry (see Installation)
+- Google Play Games Services v2 21.0.0 (resolved automatically via `Editor/Dependencies.xml`)
 
-## 🔧 Troubleshooting
+## Google Play Data Safety
 
-| Issue | Solution |
-|-------|----------|
-| Authentication fails | Check `google-services.json` is in `Assets/Plugins/Android/` |
-| `requestServerSideAccess` fails with status 10 | You are using an **Android** OAuth client ID instead of a **Web application** (Game server) client ID. In Play Console → Play Games Services → Configuration, copy the Client ID from the **Game server** credential, not the Android credential. |
-| Achievements not unlocking | Verify achievement IDs match Google Play Console exactly |
-| Leaderboard not showing | Ensure leaderboard is published in Play Console |
-| Cloud save conflict | Handle `OnConflictDetected` event and call `conflict.ResolveAsync()` |
-| Build errors (ProGuard) | Package includes ProGuard rules - ensure Gradle build uses them |
+### Data Collected
 
----
+This package does **not** collect user data on its own. Google Play Games Services processes player identity and gameplay data (scores, achievements, saved games) via Google's own infrastructure. Any data submitted through PGS APIs is sent directly to Google's servers per [Google's privacy policy](https://policies.google.com/privacy).
 
-## 📝 License
+Friends list data fetched through the API must be retained for a maximum of 30 days and used only for friends-list UI features, per Google's Data Collection policy.
+
+### Data NOT Collected or Shared
+
+- **No personal data** is collected by this package's own code
+- **No data is shared** with third parties by this package
+- **No network calls** are made by this package directly (PGS SDK handles all communication)
+
+### Play Console Data Safety Form
+
+When filling out the [Data Safety form](https://support.google.com/googleplay/android-developer/answer/10787469) in Google Play Console:
+
+1. **Data types**: Reflect data submitted via PGS APIs (scores, display name, etc.) — this is first-party data to Google Play, not "shared with third parties"
+2. **Collection purpose**: Game features / functionality
+3. **Friends data**: If used, declare 30-day retention and in-game-only purpose
+
+## License
 
 This package's C# and Java source code is licensed under the [MIT License](LICENSE.md) — Copyright (c) 2026 BizSim Game Studios.
 
-See [LICENSE.md](LICENSE.md) for the full MIT license text.
+## Third-Party Licenses
 
----
-
-## 📦 Third-Party Licenses
-
-This package does **not** bundle any Google SDK binaries. Native Android dependencies are resolved at build time via Gradle from the Google Maven repository (`maven.google.com`):
+This package does **not** bundle any Google SDK binaries. The native Android dependencies are resolved at build time by [EDM4U](https://github.com/googlesamples/unity-jar-resolver) from the Google Maven repository (`maven.google.com`):
 
 | Dependency | Version | License |
 |-----------|---------|---------|
 | `com.google.android.gms:play-services-games-v2` | 21.0.0 | [Android SDK License Agreement](https://developer.android.com/studio/terms) |
 | `com.google.android.gms:play-services-tasks` | 18.4.1 | [Android SDK License Agreement](https://developer.android.com/studio/terms) |
 
-By installing and using this package, you agree to the [Android Software Development Kit License Agreement](https://developer.android.com/studio/terms) and the [Google APIs Terms of Service](https://developers.google.com/terms).
-
 For full third-party license details, see [NOTICES.md](NOTICES.md).
-
-### Open Source Notices in Your App
-
-Google Play Services libraries contain open source components. Google requires that apps display these notices to end users. See [Include open source notices](https://developers.google.com/android/guides/opensource) for instructions on using the `oss-licenses-plugin` Gradle plugin.
-
----
-
-## 🚨 Terms of Service Compliance Notice
-
-By using this package, you agree to comply with:
-- [Google Play Developer Policies](https://play.google.com/about/developer-content-policy/)
-- [Google Play Games Services Terms](https://developer.android.com/games/pgs/terms)
-- [Google Controller-Controller Data Protection Terms](https://privacy.google.com/businesses/gdprcontrollerterms/)
-
-**Key Obligations:**
-- Submit only authentic gameplay data
-- Obtain explicit user approval for multiplayer invites/gifts
-- Use player data ONLY for game features (NOT advertising)
-- Delete friends data after 30 days OR refresh via new API calls
-- Complete Google Play Data Safety section accurately
