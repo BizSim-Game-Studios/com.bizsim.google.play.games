@@ -34,7 +34,7 @@
           │
    ┌──────▼──────┐
    │ Google Play  │  play-services-games-v2:21.0.0
-   │ Games SDK    │  play-services-tasks:18.4.1
+   │ Games SDK    │  play-services-tasks (transitive)
    └──────────────┘
 ```
 
