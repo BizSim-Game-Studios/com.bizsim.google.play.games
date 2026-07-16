@@ -35,11 +35,24 @@ Your app must comply with:
 
 ## Google Play Tasks API
 
-- **Library:** `com.google.android.gms:play-services-tasks:18.4.1`
+- **Library:** `com.google.android.gms:play-services-tasks` (transitive — pulled in by `play-services-games-v2`, not declared directly)
 - **Copyright:** Copyright Google LLC
 - **License:** [Android Software Development Kit License Agreement](https://developer.android.com/studio/terms)
 
-Used internally for asynchronous operations in the JNI bridge layer.
+Used internally for asynchronous operations in the JNI bridge layer. The resolved version is
+whatever `play-services-games-v2` pulls in; the package does not pin it independently.
+
+---
+
+## AndroidX Activity
+
+- **Library:** `androidx.activity:activity:1.13.0`
+- **Copyright:** Copyright The Android Open Source Project
+- **License:** [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0)
+
+Declared directly in the bundled `.androidlib` module (`build.gradle`). Used by the JNI bridge's
+fragment shim (`ComponentActivity` + `ActivityResultRegistry`) to receive results from PGS UI
+activities (achievements, leaderboards, and saved-game pickers).
 
 ---
 

@@ -54,7 +54,7 @@ If you already have other OpenUPM-distributed packages, you may already have thi
 }
 ```
 
-After the package imports, EDM4U is automatically resolved by UPM — no manual `.unitypackage` import required. EDM4U then resolves the Android Maven dependencies declared in `Editor/Dependencies.xml` (`com.google.android.gms:play-services-games-v2:21.0.0` and `com.google.android.gms:play-services-tasks:18.4.1`) at the next Android build, or immediately via `Assets → External Dependency Manager → Android Resolver → Force Resolve`.
+After the package imports, EDM4U is automatically resolved by UPM — no manual `.unitypackage` import required. EDM4U then resolves the Android Maven dependency declared in `Editor/Dependencies.xml` (`com.google.android.gms:play-services-games-v2:21.0.0`) at the next Android build, or immediately via `Assets → External Dependency Manager → Android Resolver → Force Resolve`. `com.google.android.gms:play-services-tasks` is not declared directly — it is pulled in transitively by Play Games Services v2. `androidx.activity:activity` is supplied by the package's bundled `.androidlib` module (used by the JNI fragment shim for PGS UI activity results).
 
 ## Quick Start
 
@@ -142,9 +142,10 @@ This package's C# and Java source code is licensed under the [MIT License](LICEN
 
 This package does **not** bundle any Google SDK binaries. The native Android dependencies are resolved at build time by [EDM4U](https://github.com/googlesamples/unity-jar-resolver) from the Google Maven repository (`maven.google.com`):
 
-| Dependency | Version | License |
-|-----------|---------|---------|
-| `com.google.android.gms:play-services-games-v2` | 21.0.0 | [Android SDK License Agreement](https://developer.android.com/studio/terms) |
-| `com.google.android.gms:play-services-tasks` | 18.4.1 | [Android SDK License Agreement](https://developer.android.com/studio/terms) |
+| Dependency | Version | Resolution | License |
+|-----------|---------|-----------|---------|
+| `com.google.android.gms:play-services-games-v2` | 21.0.0 | Direct (`Editor/Dependencies.xml` + `.androidlib`) | [Android SDK License Agreement](https://developer.android.com/studio/terms) |
+| `androidx.activity:activity` | 1.13.0 | Direct (bundled `.androidlib`) | [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0) |
+| `com.google.android.gms:play-services-tasks` | (transitive) | Pulled in by `play-services-games-v2` | [Android SDK License Agreement](https://developer.android.com/studio/terms) |
 
 For full third-party license details, see [NOTICES.md](NOTICES.md).
