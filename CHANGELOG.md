@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.3] - 2026-07-16
+
+### Fixed
+- Correct the About window and architecture diagram dependency listing: `play-services-tasks` is transitive via `play-services-games-v2` (not an independently pinned 18.4.1), the About list now includes the `androidx.activity:activity:1.13.0` runtime dependency, and the inaccurate "auto-injected via Gradle" wording is neutralized.
+
 ## [1.3.2] - 2026-07-16
 
 ### Changed
