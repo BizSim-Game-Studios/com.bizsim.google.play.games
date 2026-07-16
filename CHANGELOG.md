@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.2] - 2026-07-16
+
+### Changed
+- Bump `androidx.activity` to 1.13.0 (latest stable). The JNI fragment shim uses only stable `androidx.activity.result.*` + `ComponentActivity` APIs, so the update is low-risk.
+
+### Fixed
+- Replace hand-authored placeholder `.meta` GUIDs for `GamesAuthScope` and `TcsGuard` with real Unity-generated ones (no scene/prefab/asset referenced the old GUIDs).
+- Correct dependency attribution drift in README/NOTICES: `play-services-tasks` is transitive via `play-services-games-v2` (not declared directly in `Editor/Dependencies.xml`), and `androidx.activity` is now attributed.
+
 ## [1.3.1] - 2026-06-02
 
 ### Fixed
