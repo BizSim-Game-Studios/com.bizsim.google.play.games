@@ -895,6 +895,9 @@ namespace BizSim.Google.Play.Games.Editor
                 $"  package=\"{ns}\"\n" +
                 "  android:versionCode=\"1\"\n" +
                 "  android:versionName=\"1.0\">\n" +
+                "  <application>\n" +
+                "    <meta-data android:name=\"com.google.android.gms.games.APP_ID\" android:value=\"@string/app_id\" />\n" +
+                "  </application>\n" +
                 "</manifest>\n";
             File.WriteAllText(manifestPath, manifest);
 
