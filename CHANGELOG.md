@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.4] - 2026-08-03
+
+### Fixed
+- **SNAPSHOT_NOT_FOUND (GMS 26570) is now classified as error code 3 (`SnapshotNotFound`)** instead of the generic code 100 (`InternalError`). `CloudSaveBridge.java` inspects the `ApiException` status on the three `open(createIfNotFound=false)` failure paths (open/read/delete) and logs at Info level; `commitSnapshot` is untouched (opens with `createIfNotFound=true`, cannot 404). The C# enum and `LoadAsync`'s not-found catch already defined code 3 — Java simply never emitted it, so a fresh account's first restore probe printed a full Error-level stack for an expected "no save exists yet" answer.
+- **C# error logging follows the classification**: `CloudSaveCallbackProxy.onCloudSaveError` and `GamesCloudSaveController.OnCloudSaveErrorFromJava` log code 3 at Info instead of Error.
+- **Superseded achievement writes no longer report "A task was canceled"**: `GamesAchievementController`'s cancel-and-replace (same-achievement re-write while the previous await is pending) now completes the superseded `TaskCompletionSource` with success instead of cancelling it — the superseded call's Java dispatch had already happened, so the write was never lost; the cancellation only manufactured misleading warnings.
+
 ## [1.3.3] - 2026-07-16
 
 ### Fixed
