@@ -397,7 +397,11 @@ namespace BizSim.Google.Play.Games
 
         internal void OnCloudSaveErrorFromJava(int errorCode, string errorMessage, string filename)
         {
-            BizSimGamesLogger.Error($"[CloudSave] OnCloudSaveErrorFromJava: code={errorCode}, msg='{errorMessage}', file='{filename}', pending TCS: open={_openTcs != null}, read={_readTcs != null}, commit={_commitTcs != null}, delete={_deleteTcs != null}, showUI={_showUITcs != null}");
+            string detail = $"[CloudSave] OnCloudSaveErrorFromJava: code={errorCode}, msg='{errorMessage}', file='{filename}', pending TCS: open={_openTcs != null}, read={_readTcs != null}, commit={_commitTcs != null}, delete={_deleteTcs != null}, showUI={_showUITcs != null}";
+            if (errorCode == 3)
+                BizSimGamesLogger.Info(detail);
+            else
+                BizSimGamesLogger.Error(detail);
             var error = new GamesCloudSaveError(errorCode, errorMessage, filename);
             OnCloudSaveError?.Invoke(error);
 

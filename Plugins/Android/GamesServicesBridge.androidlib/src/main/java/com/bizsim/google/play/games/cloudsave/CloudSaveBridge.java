@@ -14,6 +14,8 @@ import androidx.activity.result.ActivityResult;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 
+import com.google.android.gms.common.api.ApiException;
+import com.google.android.gms.games.GamesClientStatusCodes;
 import com.google.android.gms.games.PlayGames;
 import com.google.android.gms.games.SnapshotsClient;
 import com.google.android.gms.games.snapshot.Snapshot;
@@ -80,10 +82,7 @@ public class CloudSaveBridge {
                         }
                     }
                 })
-                .addOnFailureListener(activity, e -> {
-                    Log.e(TAG, "Failed to open snapshot: " + filename, e);
-                    sendError(100, "Open failed: " + e.getMessage(), filename);
-                });
+                .addOnFailureListener(activity, e -> sendOpenFailure("Open", filename, e));
     }
 
     public void readSnapshot(String nativeHandle) {
@@ -114,10 +113,7 @@ public class CloudSaveBridge {
                         });
                     }
                 })
-                .addOnFailureListener(activity, e -> {
-                    Log.e(TAG, "Failed to open snapshot for read: " + filename, e);
-                    sendError(100, "Read open failed: " + e.getMessage(), filename);
-                });
+                .addOnFailureListener(activity, e -> sendOpenFailure("Read open", filename, e));
     }
 
     public void commitSnapshot(String nativeHandle, byte[] data, String description, long playedTimeMillis, byte[] coverImage) {
@@ -207,10 +203,7 @@ public class CloudSaveBridge {
                                 });
                     }
                 })
-                .addOnFailureListener(activity, e -> {
-                    Log.e(TAG, "Failed to open snapshot for delete: " + filename, e);
-                    sendError(100, "Delete open failed: " + e.getMessage(), filename);
-                });
+                .addOnFailureListener(activity, e -> sendOpenFailure("Delete open", filename, e));
     }
 
     public void showSavedGamesUI(String title, boolean allowAddButton, boolean allowDelete, int maxSnapshots) {
@@ -396,6 +389,21 @@ public class CloudSaveBridge {
         }
 
         return obj.toString();
+    }
+
+    // SNAPSHOT_NOT_FOUND with createIfNotFound=false is an expected "no save exists"
+    // answer, not an internal error: it maps to error code 3 (SnapshotNotFound in the
+    // C# contract) at Info level. Everything else stays code 100. commitSnapshot never
+    // routes here because it opens with createIfNotFound=true and cannot 404.
+    private void sendOpenFailure(String operation, String filename, Exception e) {
+        int status = (e instanceof ApiException) ? ((ApiException) e).getStatusCode() : 0;
+        if (status == GamesClientStatusCodes.SNAPSHOT_NOT_FOUND) {
+            Log.i(TAG, operation + ": snapshot not found: " + filename);
+            sendError(3, "Snapshot not found", filename);
+        } else {
+            Log.e(TAG, operation + " failed for: " + filename, e);
+            sendError(100, operation + " failed: " + e.getMessage(), filename);
+        }
     }
 
     private void sendError(int errorCode, String errorMessage, String filename) {

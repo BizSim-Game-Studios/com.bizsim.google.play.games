@@ -55,7 +55,12 @@ namespace BizSim.Google.Play.Games
 
         void onCloudSaveError(int errorCode, string errorMessage, string filename)
         {
-            BizSimGamesLogger.Error($"[CloudSave][JNI→Unity] onCloudSaveError: code={errorCode}, message='{errorMessage}', filename='{filename}'");
+            // Code 3 (SnapshotNotFound) is an expected first-run answer, not a failure —
+            // Error level here made every fresh account's restore probe look broken.
+            if (errorCode == 3)
+                BizSimGamesLogger.Info($"[CloudSave][JNI→Unity] onCloudSaveError: code={errorCode}, message='{errorMessage}', filename='{filename}'");
+            else
+                BizSimGamesLogger.Error($"[CloudSave][JNI→Unity] onCloudSaveError: code={errorCode}, message='{errorMessage}', filename='{filename}'");
             UnityMainThreadDispatcher.Enqueue(() => _controller.OnCloudSaveErrorFromJava(errorCode, errorMessage, filename));
         }
     }
