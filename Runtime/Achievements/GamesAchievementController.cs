@@ -65,8 +65,11 @@ namespace BizSim.Google.Play.Games
             var tcs = new TaskCompletionSource<bool>();
             lock (_pendingUnlocks)
             {
+                // The superseded call's Java dispatch already happened before its await,
+                // so completing it as success is truthful; cancelling it manufactured
+                // "A task was canceled" warnings for writes that actually landed.
                 if (_pendingUnlocks.TryGetValue(achievementId, out var existing))
-                    existing.TrySetCanceled();
+                    existing.TrySetResult(true);
                 _pendingUnlocks[achievementId] = tcs;
             }
 
@@ -92,7 +95,7 @@ namespace BizSim.Google.Play.Games
             lock (_pendingIncrements)
             {
                 if (_pendingIncrements.TryGetValue(achievementId, out var existing))
-                    existing.TrySetCanceled();
+                    existing.TrySetResult(true);
                 _pendingIncrements[achievementId] = tcs;
             }
 
@@ -115,7 +118,7 @@ namespace BizSim.Google.Play.Games
             lock (_pendingReveals)
             {
                 if (_pendingReveals.TryGetValue(achievementId, out var existing))
-                    existing.TrySetCanceled();
+                    existing.TrySetResult(true);
                 _pendingReveals[achievementId] = tcs;
             }
 
