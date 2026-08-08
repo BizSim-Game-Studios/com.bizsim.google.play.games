@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.5] - 2026-08-07
+
+### Fixed
+- **`androidx.activity` pinned back to 1.12.4 from 1.13.0.** The 1.13.0 pin broke every `AndroidJavaObject` call made on the Activity — not only this package's — on Android 11 and below. `ComponentActivity` in 1.13.0 declares `onPictureInPictureUiStateChanged(PictureInPictureUiState)`, and that parameter type first exists in API 31; Unity's `ReflectionHelper.getMethodID` walks the class hierarchy calling `getDeclaredMethods()`, which eagerly resolves every parameter type, so the lookup throws `NoClassDefFoundError` before it ever finds the requested method. In the consuming game this silently killed the exit button, the ad-consent flow, the notification-permission prompt, the "open Play Games" action and haptics on every pre-Android-12 device. Confirmed against Crashlytics: 59 events over 18 users, distributed Android 11 = 44, Android 9 = 9, Android 10 = 6, Android 12 and above = 0.
+- The pin was never a requirement: `play-services-games-v2:21.0.0` and `androidx.games:games-activity:4.4.0` declare no `androidx.activity` dependency at all, the highest transitive request in the graph is 1.8.1, and the three APIs this package uses (`ComponentActivity`, `ActivityResultLauncher`, `ActivityResultContracts`) have all existed since 1.2.0. 1.12.4 is the newest release that carries no `PictureInPictureUiState` reference.
+
 ## [1.3.4] - 2026-08-03
 
 ### Fixed

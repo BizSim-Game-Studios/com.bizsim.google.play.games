@@ -29,5 +29,13 @@ dependencies {
     // Google Play Games Services v2 (CRITICAL: Use v2, NEVER v1)
     implementation 'com.google.android.gms:play-services-games-v2:21.0.0'
 
-    implementation 'androidx.activity:activity:1.13.0'
+    // Pinned BELOW 1.13.0 deliberately. ComponentActivity in 1.13.0 declares
+    // onPictureInPictureUiStateChanged(PictureInPictureUiState), and that parameter type only
+    // exists from API 31. Unity resolves Java methods by walking the class hierarchy and calling
+    // getDeclaredMethods() at each level, which eagerly resolves every parameter type - so on
+    // Android 11 and below EVERY AndroidJavaObject call on the Activity throws
+    // NoClassDefFoundError, not just the Games ones. Nothing else in the graph asks for more than
+    // 1.8.1, and the APIs used here (ComponentActivity, ActivityResultLauncher,
+    // ActivityResultContracts) have existed since 1.2.0.
+    implementation 'androidx.activity:activity:1.12.4'
 }
