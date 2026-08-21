@@ -15,6 +15,7 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 
 import com.google.android.gms.common.api.ApiException;
+import com.google.android.gms.common.api.CommonStatusCodes;
 import com.google.android.gms.games.GamesClientStatusCodes;
 import com.google.android.gms.games.PlayGames;
 import com.google.android.gms.games.SnapshotsClient;
@@ -78,7 +79,7 @@ public class CloudSaveBridge {
                                 callback.onSnapshotOpened(filename, snapshotJson, false);
                             }
                         } catch (Exception e) {
-                            sendError(100, "Failed to serialize snapshot: " + e.getMessage(), filename);
+                            sendFailure("Failed to serialize snapshot: " + e.getMessage(), filename, e);
                         }
                     }
                 })
@@ -108,7 +109,7 @@ public class CloudSaveBridge {
                                     callback.onSnapshotRead(filename, data);
                                 }
                             } catch (Exception e) {
-                                sendError(100, "Read failed: " + e.getMessage(), filename);
+                                sendFailure("Read failed: " + e.getMessage(), filename, e);
                             }
                         });
                     }
@@ -166,18 +167,18 @@ public class CloudSaveBridge {
                                             }
                                         })
                                         .addOnFailureListener(activity, e -> {
-                                            sendError(100, "Commit failed: " + e.getMessage(), filename);
+                                            sendFailure("Commit failed: " + e.getMessage(), filename, e);
                                         });
 
                             } catch (Exception e) {
-                                sendError(100, "Write failed: " + e.getMessage(), filename);
+                                sendFailure("Write failed: " + e.getMessage(), filename, e);
                             }
                         });
                     }
                 })
                 .addOnFailureListener(activity, e -> {
                     Log.e(TAG, "Failed to open snapshot for commit: " + filename, e);
-                    sendError(100, "Commit open failed: " + e.getMessage(), filename);
+                    sendFailure("Commit open failed: " + e.getMessage(), filename, e);
                 });
     }
 
@@ -199,7 +200,7 @@ public class CloudSaveBridge {
                                     }
                                 })
                                 .addOnFailureListener(activity, e -> {
-                                    sendError(100, "Delete failed: " + e.getMessage(), filename);
+                                    sendFailure("Delete failed: " + e.getMessage(), filename, e);
                                 });
                     }
                 })
@@ -226,7 +227,7 @@ public class CloudSaveBridge {
                 })
                 .addOnFailureListener(activity, e -> {
                     savedGamesCallback = null;
-                    sendError(100, "UI failed: " + e.getMessage(), null);
+                    sendFailure("UI failed: " + e.getMessage(), null, e);
                 });
     }
 
@@ -291,7 +292,7 @@ public class CloudSaveBridge {
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Failed to handle conflict", e);
-                sendError(100, "Conflict handling failed: " + e.getMessage(), null);
+                sendFailure("Conflict handling failed: " + e.getMessage(), null, e);
             }
         });
     }
@@ -328,14 +329,14 @@ public class CloudSaveBridge {
                                 callback.onSnapshotOpened(filename, snapshotJson, false);
                             }
                         } catch (Exception e) {
-                            sendError(100, "Post-resolve serialize failed: " + e.getMessage(), null);
+                            sendFailure("Post-resolve serialize failed: " + e.getMessage(), null, e);
                         }
                     }
                 })
                 .addOnFailureListener(activity, e -> {
                     Log.e(TAG, "Failed to resolve conflict", e);
                     lastConflict = null;
-                    sendError(100, "Resolve failed: " + e.getMessage(), null);
+                    sendFailure("Resolve failed: " + e.getMessage(), null, e);
                 });
     }
 
@@ -402,8 +403,72 @@ public class CloudSaveBridge {
             sendError(3, "Snapshot not found", filename);
         } else {
             Log.e(TAG, operation + " failed for: " + filename, e);
-            sendError(100, operation + " failed: " + e.getMessage(), filename);
+            sendFailure(operation + " failed: " + e.getMessage(), filename, e);
         }
+    }
+
+    /**
+     * Maps a Play Games failure onto the typed vocabulary the C# side already declares in
+     * GamesCloudSaveError.cs (-1 ApiNotAvailable, 1 UserNotAuthenticated, 2 NetworkError,
+     * 3 SnapshotNotFound, 4 ConflictTimeout, 5 DataTooLarge, 100 InternalError).
+     *
+     * Every failure used to leave here as 100, so that vocabulary was never produced on a real
+     * device and the client could not tell a signed-out session from a dead network. It told the
+     * player to check their internet either way. Measured 2026-08-21: Russia produced 82% of the
+     * world's cloud-save errors in the clean window and every one of those players got the
+     * connectivity message.
+     *
+     * Constants verified against the shipped jars rather than from memory:
+     * play-services-basement-18.10.0 (CommonStatusCodes) and play-services-games-v2-21.0.0
+     * (GamesClientStatusCodes). Anything not listed stays 100 deliberately - a wrong
+     * classification is worse than an honest "internal error", and the C# contract maps an
+     * unknown code to Unknown rather than to a wrong branch.
+     */
+    private int classify(Exception e) {
+        if (!(e instanceof ApiException)) {
+            return 100;
+        }
+
+        switch (((ApiException) e).getStatusCode()) {
+            case GamesClientStatusCodes.SNAPSHOT_NOT_FOUND:
+                return 3;
+
+            case CommonStatusCodes.SIGN_IN_REQUIRED:
+            case CommonStatusCodes.INVALID_ACCOUNT:
+            case CommonStatusCodes.RESOLUTION_REQUIRED:
+            case GamesClientStatusCodes.CONSENT_REQUIRED:
+                return 1;
+
+            case CommonStatusCodes.NETWORK_ERROR:
+            case GamesClientStatusCodes.NETWORK_ERROR_NO_DATA:
+            case GamesClientStatusCodes.NETWORK_ERROR_OPERATION_FAILED:
+                return 2;
+
+            case CommonStatusCodes.API_NOT_CONNECTED:
+            case CommonStatusCodes.SERVICE_VERSION_UPDATE_REQUIRED:
+            case CommonStatusCodes.SERVICE_DISABLED:
+            case CommonStatusCodes.CONNECTION_SUSPENDED_DURING_CALL:
+            case CommonStatusCodes.RECONNECTION_TIMED_OUT:
+            case CommonStatusCodes.RECONNECTION_TIMED_OUT_DURING_UPDATE:
+                return -1;
+
+            case CommonStatusCodes.TIMEOUT:
+            case GamesClientStatusCodes.OPERATION_IN_FLIGHT:
+            case GamesClientStatusCodes.SNAPSHOT_CONFLICT_MISSING:
+                return 4;
+
+            default:
+                return 100;
+        }
+    }
+
+    /**
+     * The exception-carrying counterpart of sendError. Use this wherever a Throwable is in scope;
+     * sendError(100, ...) is now reserved for the three internal states that have no exception
+     * behind them (an invalid snapshot handle, and resolving a conflict that is not there).
+     */
+    private void sendFailure(String errorMessage, String filename, Exception e) {
+        sendError(classify(e), errorMessage, filename);
     }
 
     private void sendError(int errorCode, String errorMessage, String filename) {
