@@ -387,7 +387,37 @@ namespace BizSim.Google.Play.Games
                 };
 
                 _lastConflict = conflict;
-                OnConflictDetected?.Invoke(conflict);
+
+                var handler = OnConflictDetected;
+                handler?.Invoke(conflict);
+
+                // Without this the open task hangs FOREVER. On a conflict the Java bridge
+                // calls onConflictDetected INSTEAD of onSnapshotOpened, so _openTcs is left
+                // pending and nothing else in the pipeline ever completes it - the await
+                // ends only when OnDispose cancels it, which surfaces as an unexplained
+                // OperationCanceledException minutes later. Measured 2026-08-22 against
+                // Junkyard Tycoon's cloud_load_result telemetry: error_type=Canceled with no
+                // preceding cloud_load_attempt, on players restoring after a reinstall -
+                // exactly the case Play Games reports as a conflict.
+                //
+                // _conflictTcs non-null means HandleConflictWithTimeout is already awaiting
+                // an answer and owns the resolution; a subscriber means the game answers.
+                // With neither, resolving here is the only thing that can free the caller.
+                //
+                // UseServer, never ResolveByTimestamp: the newer snapshot is the WRONG
+                // answer for the case that actually happens. A fresh install auto-saves
+                // within minutes, so its empty save is newer than the months-old real one,
+                // and "newest wins" would quietly discard the progress the player is trying
+                // to recover. UseServer is safe on every path - a restore wants the cloud
+                // copy by definition, and a save commits its own bytes over whichever
+                // snapshot it resolved to, so the choice cannot cost the player a save.
+                if (_conflictTcs == null && handler == null)
+                {
+                    BizSimGamesLogger.Warning(
+                        "[CloudSave] Conflict with no resolver - auto-resolving UseServer to " +
+                        "release the pending open");
+                    CallBridge("resolveConflict", ConflictResolution.UseServer.ToString(), "");
+                }
             }
             catch (Exception ex)
             {
