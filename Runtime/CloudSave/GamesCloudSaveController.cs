@@ -75,7 +75,14 @@ namespace BizSim.Google.Play.Games
             {
                 CallBridge("readSnapshot", handle.nativeHandle);
                 BizSimGamesLogger.Info("[CloudSave] ReadSnapshotAsync: JNI bridge called, awaiting data...");
-                var data = await tcs.Task;
+                // Open and Commit have carried WithJniTimeout since they were written; Read
+                // never did, and it is the one the restore path depends on. Without it a
+                // bridge callback that never arrives leaves the caller waiting until the
+                // controller is disposed, which reaches the game as an OperationCanceled
+                // long after the fact instead of a Timeout it can report and retry.
+                // Safe at the shared 30s budget because the download happens in
+                // openSnapshot - readSnapshot only hands over contents already on device.
+                var data = await tcs.Task.WithJniTimeout(tcs, ct: ct);
                 BizSimGamesLogger.Info($"[CloudSave] ReadSnapshotAsync DONE: {data?.Length ?? 0} bytes");
                 return data;
             }
@@ -113,7 +120,7 @@ namespace BizSim.Google.Play.Games
             using (ct.Register(() => tcs.TrySetCanceled()))
             {
                 CallBridge("deleteSnapshot", filename);
-                await tcs.Task;
+                await tcs.Task.WithJniTimeout(tcs, ct: ct);
             }
         }
 
