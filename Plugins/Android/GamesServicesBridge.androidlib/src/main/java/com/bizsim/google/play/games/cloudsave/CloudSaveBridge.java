@@ -96,11 +96,13 @@ public class CloudSaveBridge {
         }
 
         String filename = parts[1];
+        pendingConflictOp = "read";
         snapshotsClient.open(filename, false, CONFLICT_RESOLUTION_POLICY_MANUAL)
                 .addOnSuccessListener(activity, dataOrConflict -> {
                     if (dataOrConflict.isConflict()) {
                         handleConflict(dataOrConflict.getConflict());
                     } else {
+                        pendingConflictOp = null;
                         Snapshot snapshot = dataOrConflict.getData();
                         ioExecutor.execute(() -> {
                             try {
@@ -273,6 +275,12 @@ public class CloudSaveBridge {
 
     private volatile SnapshotsClient.SnapshotConflict lastConflict;
 
+    // Which call raised the conflict. resolveConflict always answered with onSnapshotOpened,
+    // which on the C# side completes _openTcs and nothing else - so a conflict raised during
+    // a READ left _readTcs pending until its 30s JNI timeout fired. That is the shape behind
+    // the error_type=Canceled / error_type=Timeout restores with no preceding attempt.
+    private volatile String pendingConflictOp;
+
     private void handleConflict(SnapshotsClient.SnapshotConflict conflict) {
         this.lastConflict = conflict;
 
@@ -322,8 +330,28 @@ public class CloudSaveBridge {
                         handleConflict(dataOrConflict.getConflict());
                     } else {
                         Snapshot snapshot = dataOrConflict.getData();
+                        String op = pendingConflictOp;
+                        pendingConflictOp = null;
                         try {
                             String filename = snapshot.getMetadata().getUniqueName();
+
+                            // A read that hit a conflict wants the CONTENTS, not a handle.
+                            // Answering with onSnapshotOpened completes the open task and
+                            // leaves the read waiting for a callback that never comes.
+                            if ("read".equals(op)) {
+                                ioExecutor.execute(() -> {
+                                    try {
+                                        byte[] data = snapshot.getSnapshotContents().readFully();
+                                        if (callback != null) {
+                                            callback.onSnapshotRead(filename, data);
+                                        }
+                                    } catch (Exception e) {
+                                        sendFailure("Post-resolve read failed: " + e.getMessage(), filename, e);
+                                    }
+                                });
+                                return;
+                            }
+
                             String snapshotJson = serializeSnapshot(snapshot);
                             if (callback != null) {
                                 callback.onSnapshotOpened(filename, snapshotJson, false);
