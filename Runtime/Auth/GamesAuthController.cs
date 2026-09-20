@@ -83,7 +83,7 @@ namespace BizSim.Google.Play.Games
                     BizSimGamesLogger.Info("Calling signIn() on Java bridge");
                     _authBridge.Call("signIn");
 
-                    return await tcs.Task.WithJniTimeout(tcs, ct: linkedCts.Token);
+                    return await tcs.Task;
                 }
                 catch (OperationCanceledException)
                 {
