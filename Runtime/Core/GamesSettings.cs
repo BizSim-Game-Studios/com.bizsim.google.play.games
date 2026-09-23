@@ -35,7 +35,7 @@ namespace BizSim.Google.Play.Games
         public LogLevel LogLevel = LogLevel.Info;
 
         [Header("Editor / Development")]
-        [Tooltip("If true, builds with DEVELOPMENT_BUILD use MockProvider instead of the real JNI provider. Release builds always use the real provider regardless.")]
+        [Tooltip("Cross-package base field (CROSS-PACKAGE-INVARIANTS §12). The games package does not read it: its mock behaviour is configured in GamesServicesConfig.")]
         public bool UseMockInDevelopmentBuild = false;
 
         [Header("Analytics")]
