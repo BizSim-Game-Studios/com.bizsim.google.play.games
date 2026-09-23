@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.6] - 2026-09-23
+
+### Fixed
+- `PackageVersion.Current` read `1.3.3` through 1.3.4 and 1.3.5; it matches `package.json` again.
+- The `UseMockInDevelopmentBuild` tooltip claimed this package reads it. It does not; mocks are
+  configured in `GamesServicesConfig`, and the field stays only as a cross-package base field.
+
 ## [1.3.5] - 2026-08-07
 
 ### Fixed
