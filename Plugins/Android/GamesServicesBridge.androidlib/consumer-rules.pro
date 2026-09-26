@@ -39,11 +39,11 @@
 
 -keepclassmembers interface com.bizsim.google.play.games.cloudsave.ICloudSaveCallback {
     void onSnapshotOpened(java.lang.String, java.lang.String, boolean);
-    void onSnapshotRead(java.lang.String, byte[]);
+    void onSnapshotRead(java.lang.String, java.lang.String);
     void onSnapshotCommitted(java.lang.String);
     void onSnapshotDeleted(java.lang.String);
     void onSavedGamesUIResult(java.lang.String);
-    void onConflictDetected(java.lang.String, java.lang.String, byte[], byte[]);
+    void onConflictDetected(java.lang.String, java.lang.String, java.lang.String, java.lang.String);
     void onCloudSaveError(int, java.lang.String, java.lang.String);
 }
 

@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Build;
+import android.util.Base64;
 import android.util.Log;
 
 import androidx.activity.ComponentActivity;
@@ -108,7 +109,7 @@ public class CloudSaveBridge {
                             try {
                                 byte[] data = snapshot.getSnapshotContents().readFully();
                                 if (callback != null) {
-                                    callback.onSnapshotRead(filename, data);
+                                    callback.onSnapshotRead(filename, toBase64(data));
                                 }
                             } catch (Exception e) {
                                 sendFailure("Read failed: " + e.getMessage(), filename, e);
@@ -296,7 +297,7 @@ public class CloudSaveBridge {
                 byte[] serverData = serverSnapshot.getSnapshotContents().readFully();
 
                 if (callback != null) {
-                    callback.onConflictDetected(localJson, serverJson, localData, serverData);
+                    callback.onConflictDetected(localJson, serverJson, toBase64(localData), toBase64(serverData));
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Failed to handle conflict", e);
@@ -343,7 +344,7 @@ public class CloudSaveBridge {
                                     try {
                                         byte[] data = snapshot.getSnapshotContents().readFully();
                                         if (callback != null) {
-                                            callback.onSnapshotRead(filename, data);
+                                            callback.onSnapshotRead(filename, toBase64(data));
                                         }
                                     } catch (Exception e) {
                                         sendFailure("Post-resolve read failed: " + e.getMessage(), filename, e);
@@ -511,5 +512,12 @@ public class CloudSaveBridge {
         lastConflict = null;
         savedGamesCallback = null;
         callback = null;
+    }
+
+    // A byte[] handed to an AndroidJavaProxy is unboxed on the C# side one element at a time,
+    // one JNI global reference per byte; a save of a few hundred KB overflows ART's global
+    // reference table and aborts the process (Crashlytics 4c5a11ea). A String crosses in one call.
+    private static String toBase64(byte[] data) {
+        return data == null ? null : Base64.encodeToString(data, Base64.NO_WRAP);
     }
 }

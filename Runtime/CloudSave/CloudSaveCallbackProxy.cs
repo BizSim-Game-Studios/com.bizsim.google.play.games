@@ -1,5 +1,6 @@
 // Copyright (c) BizSim Game Studios. All rights reserved.
 
+using System;
 using UnityEngine;
 
 namespace BizSim.Google.Play.Games
@@ -21,8 +22,9 @@ namespace BizSim.Google.Play.Games
             UnityMainThreadDispatcher.Enqueue(() => _controller.OnSnapshotOpenedFromJava(filename, snapshotJson, hasConflict));
         }
 
-        void onSnapshotRead(string filename, byte[] data)
+        void onSnapshotRead(string filename, string dataBase64)
         {
+            byte[] data = FromBase64(dataBase64);
             BizSimGamesLogger.Info($"[CloudSave][JNI→Unity] onSnapshotRead: filename='{filename}', dataSize={data?.Length ?? 0} bytes");
             UnityMainThreadDispatcher.Enqueue(() => _controller.OnSnapshotReadFromJava(filename, data));
         }
@@ -45,8 +47,10 @@ namespace BizSim.Google.Play.Games
             UnityMainThreadDispatcher.Enqueue(() => _controller.OnSavedGamesUIResultFromJava(selectedFilename));
         }
 
-        void onConflictDetected(string localSnapshotJson, string serverSnapshotJson, byte[] localData, byte[] serverData)
+        void onConflictDetected(string localSnapshotJson, string serverSnapshotJson, string localDataBase64, string serverDataBase64)
         {
+            byte[] localData = FromBase64(localDataBase64);
+            byte[] serverData = FromBase64(serverDataBase64);
             BizSimGamesLogger.Warning($"[CloudSave][JNI→Unity] onConflictDetected: localJson={localSnapshotJson?.Length ?? 0} chars, serverJson={serverSnapshotJson?.Length ?? 0} chars, localData={localData?.Length ?? 0} bytes, serverData={serverData?.Length ?? 0} bytes");
             BizSimGamesLogger.Info($"[CloudSave][JNI→Unity] conflict local: {localSnapshotJson}");
             BizSimGamesLogger.Info($"[CloudSave][JNI→Unity] conflict server: {serverSnapshotJson}");
@@ -62,6 +66,11 @@ namespace BizSim.Google.Play.Games
             else
                 BizSimGamesLogger.Error($"[CloudSave][JNI→Unity] onCloudSaveError: code={errorCode}, message='{errorMessage}', filename='{filename}'");
             UnityMainThreadDispatcher.Enqueue(() => _controller.OnCloudSaveErrorFromJava(errorCode, errorMessage, filename));
+        }
+
+        static byte[] FromBase64(string value)
+        {
+            return value == null ? null : Convert.FromBase64String(value);
         }
     }
 }

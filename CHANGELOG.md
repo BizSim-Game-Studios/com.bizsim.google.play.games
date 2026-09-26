@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.7] - 2026-09-26
+
+### Fixed
+- **Cloud-save reads no longer abort the process on large saves.** `onSnapshotRead` and
+  `onConflictDetected` handed the snapshot to the C# `AndroidJavaProxy` as a Java `byte[]`, and
+  Unity's `AndroidJavaProxy.Invoke` unboxes an array one element at a time through
+  `java.lang.reflect.Array.get`, creating one JNI global reference per byte that only the finalizer
+  releases. A save of a few hundred KB overflows ART's global-reference table and the runtime
+  aborts (SIGABRT in `AndroidJavaObject._ctor`, JYT Crashlytics 4c5a11ea). The bytes now cross as
+  a Base64 `String` (one JNI call) and `CloudSaveCallbackProxy` decodes them. The public C#
+  events and `GamesCloudSaveController` methods are unchanged. `ICloudSaveCallback`'s keep rules in
+  `consumer-rules.pro` / `proguard-rules.pro` follow the new signatures.
+
 ## [1.3.6] - 2026-09-23
 
 ### Fixed
