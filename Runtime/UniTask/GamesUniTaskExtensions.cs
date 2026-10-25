@@ -1,18 +1,22 @@
 // Copyright (c) BizSim Game Studios. All rights reserved.
 
 #if BIZSIM_UNITASK
+using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 
 namespace BizSim.Google.Play.Games.UniTask
 {
+    // The namespace name shadows the non-generic UniTask type; the alias wins inside this block.
+    using UniTask = Cysharp.Threading.Tasks.UniTask;
+
     public static class GamesUniTaskExtensions
     {
         public static async UniTask<GamesPlayer> AuthenticateUniTask(
-            this IGamesAuthProvider provider, bool silentOnly = false, CancellationToken ct = default)
+            this IGamesAuthProvider provider, CancellationToken ct = default)
         {
-            return await provider.AuthenticateAsync(silentOnly, ct);
+            return await provider.AuthenticateAsync(ct);
         }
 
         public static async UniTask UnlockAchievementUniTask(
@@ -27,7 +31,7 @@ namespace BizSim.Google.Play.Games.UniTask
             await provider.IncrementAchievementAsync(achievementId, steps, ct);
         }
 
-        public static async UniTask<GamesAchievement[]> LoadAchievementsUniTask(
+        public static async UniTask<List<GamesAchievement>> LoadAchievementsUniTask(
             this IGamesAchievementProvider provider, bool forceReload = false, CancellationToken ct = default)
         {
             return await provider.LoadAchievementsAsync(forceReload, ct);

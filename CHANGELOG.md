@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.1] - 2026-10-25
+
+### Fixed
+- **`BizSim.Google.Play.Games.UniTask` compiles again.** `GamesUniTaskExtensions` never built with
+  `BIZSIM_UNITASK` defined: the sub-namespace `...Games.UniTask` shadowed the non-generic `UniTask`
+  type (CS0118; an alias inside the namespace block fixes it), `AuthenticateUniTask` passed a
+  `silentOnly` argument that `AuthenticateAsync` does not take (the parameter is removed), and
+  `LoadAchievementsUniTask` returned `GamesAchievement[]` instead of `List<GamesAchievement>`.
+
 ## [1.5.0] - 2026-10-25
 
 ### Changed
