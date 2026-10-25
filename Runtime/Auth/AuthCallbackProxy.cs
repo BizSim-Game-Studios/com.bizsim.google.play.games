@@ -104,5 +104,15 @@ namespace BizSim.Google.Play.Games
                 _controller.OnScopedAccessFailure(errorCode, errorMessage);
             });
         }
+
+        void onAuthCheckResult(bool authenticated)
+        {
+            BizSimGamesLogger.Verbose($"[Callback] onAuthCheckResult: authenticated={authenticated}");
+
+            UnityMainThreadDispatcher.Enqueue(() =>
+            {
+                _controller.OnAuthCheckResult(authenticated);
+            });
+        }
     }
 }

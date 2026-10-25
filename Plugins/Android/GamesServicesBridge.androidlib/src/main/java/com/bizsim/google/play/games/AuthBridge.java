@@ -111,6 +111,33 @@ public class AuthBridge {
     }
 
     /**
+     * Silent auth check: GamesSignInClient.isAuthenticated() never shows Play UI.
+     * Always ends with onAuthCheckResult; when authenticated, the player profile is fetched first
+     * (onAuthSuccess) so the C# side holds the same state as after signIn().
+     */
+    public void checkAuthenticated() {
+        if (callback == null) {
+            Log.e(TAG, "checkAuthenticated() called but callback is null");
+            return;
+        }
+
+        Task<AuthenticationResult> checkTask = signInClient.isAuthenticated();
+
+        checkTask.addOnSuccessListener(activity, result -> {
+            if (result.isAuthenticated()) {
+                fetchPlayerProfile(true);
+            } else {
+                callback.onAuthCheckResult(false);
+            }
+        });
+
+        checkTask.addOnFailureListener(activity, exception -> {
+            Log.w(TAG, "Silent auth check failed: " + exception.getMessage());
+            callback.onAuthCheckResult(false);
+        });
+    }
+
+    /**
      * Requests a server-side access auth code for backend integration.
      * PGS v2: GamesSignInClient.requestServerSideAccess(clientId, forceRefresh)
      * @param serverClientId OAuth 2.0 Web Client ID from Google Cloud Console
@@ -199,6 +226,10 @@ public class AuthBridge {
      * Fetches current player profile after successful sign-in.
      */
     private void fetchPlayerProfile() {
+        fetchPlayerProfile(false);
+    }
+
+    private void fetchPlayerProfile(boolean silentCheck) {
         PlayersClient playersClient = PlayGames.getPlayersClient(activity);
         Task<Player> playerTask = playersClient.getCurrentPlayer();
 
@@ -210,10 +241,17 @@ public class AuthBridge {
 
             Log.d(TAG, "Player profile fetched: " + displayName + " (" + playerId + ")");
             callback.onAuthSuccess(playerId, displayName, avatarUri);
+            if (silentCheck) {
+                callback.onAuthCheckResult(true);
+            }
         });
 
         playerTask.addOnFailureListener(activity, exception -> {
             Log.e(TAG, "Failed to fetch player profile: " + exception.getMessage());
+            if (silentCheck) {
+                callback.onAuthCheckResult(false);
+                return;
+            }
             callback.onAuthFailure(ERROR_SIGN_IN_FAILED,
                 "Authentication succeeded but profile fetch failed: " + exception.getMessage());
         });

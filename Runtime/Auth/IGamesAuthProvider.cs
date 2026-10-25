@@ -33,6 +33,16 @@ namespace BizSim.Google.Play.Games
         Task<GamesPlayer> AuthenticateAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// Silent check of the current Play Games sign-in state (GamesSignInClient.isAuthenticated()).
+        /// Never shows Play UI and never throws for "not signed in": returns false instead.
+        /// When it returns true, <see cref="IsAuthenticated"/> and <see cref="CurrentPlayer"/> are set.
+        /// Default implementation returns the cached <see cref="IsAuthenticated"/> so custom
+        /// providers written against older versions keep compiling.
+        /// </summary>
+        Task<bool> CheckAuthenticatedAsync(CancellationToken cancellationToken = default)
+            => Task.FromResult(IsAuthenticated);
+
+        /// <summary>
         /// Requests OAuth2 server-side access token for backend integration.
         /// Requires authentication first.
         /// </summary>

@@ -21,6 +21,7 @@
     void onServerSideAccessFailure(int, java.lang.String);
     void onServerSideAccessWithScopesSuccess(java.lang.String, java.lang.String);
     void onServerSideAccessWithScopesFailure(int, java.lang.String);
+    void onAuthCheckResult(boolean);
 }
 
 -keepclassmembers interface com.bizsim.google.play.games.achievements.IAchievementCallback {

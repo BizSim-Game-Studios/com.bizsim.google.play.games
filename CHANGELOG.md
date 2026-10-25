@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-10-25
+
+### Added
+- **Silent sign-in check.** `IGamesAuthProvider.CheckAuthenticatedAsync()` wraps
+  `GamesSignInClient.isAuthenticated()`: it never shows Play UI and returns `false` (no exception)
+  when the player is not signed in or the check fails. When it returns `true` the player profile
+  is fetched first, so `IsAuthenticated`, `CurrentPlayer` and `OnAuthenticationSuccess` match what
+  `AuthenticateAsync()` leaves behind. New Java `AuthBridge.checkAuthenticated()` and
+  `IAuthCallback.onAuthCheckResult(boolean)` (keep rules updated). The interface member has a
+  default implementation (cached `IsAuthenticated`), so custom providers still compile.
+
 ## [1.3.7] - 2026-09-26
 
 ### Fixed

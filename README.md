@@ -69,6 +69,12 @@ After the package imports, EDM4U is automatically resolved by UPM — no manual 
        GamesServicesManager.Initialize();
    }
 
+   // Silent check, never shows Play UI (false when not signed in):
+   async void CheckSignedIn()
+   {
+       bool signedIn = await GamesServicesManager.Auth.CheckAuthenticatedAsync();
+   }
+
    async void AuthenticateUser()
    {
        var player = await GamesServicesManager.Auth.AuthenticateAsync();

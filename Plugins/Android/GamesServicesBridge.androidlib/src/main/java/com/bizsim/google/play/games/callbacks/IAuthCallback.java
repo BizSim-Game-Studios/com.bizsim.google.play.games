@@ -41,4 +41,10 @@ public interface IAuthCallback {
     void onServerSideAccessWithScopesSuccess(String authCode, String grantedScopesJson);
 
     void onServerSideAccessWithScopesFailure(int errorCode, String errorMessage);
+
+    /**
+     * Called when the silent auth check (AuthBridge.checkAuthenticated) finishes.
+     * @param authenticated true if the player is signed in (onAuthSuccess was delivered first)
+     */
+    void onAuthCheckResult(boolean authenticated);
 }

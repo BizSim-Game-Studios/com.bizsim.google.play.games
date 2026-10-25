@@ -76,6 +76,12 @@ namespace BizSim.Google.Play.Games
             }
         }
 
+        public Task<bool> CheckAuthenticatedAsync(CancellationToken cancellationToken = default)
+        {
+            BizSimGamesLogger.Info($"[Mock] CheckAuthenticatedAsync called (authenticated={_isAuthenticated})");
+            return Task.FromResult(_isAuthenticated);
+        }
+
         public async Task<string> RequestServerSideAccessAsync(string serverClientId, bool forceRefresh = false, CancellationToken cancellationToken = default)
         {
             BizSimGamesLogger.Info($"[Mock] RequestServerSideAccessAsync called (serverClientId={serverClientId})");

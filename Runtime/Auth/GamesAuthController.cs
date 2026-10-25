@@ -13,6 +13,7 @@ namespace BizSim.Google.Play.Games
         private AndroidJavaObject _authBridge;
         private AuthCallbackProxy _callbackProxy;
         private TaskCompletionSource<GamesPlayer> _authTaskSource;
+        private TaskCompletionSource<bool> _authCheckTaskSource;
         private TaskCompletionSource<string> _serverAccessTaskSource;
         private TaskCompletionSource<GamesAuthResponse> _scopedAccessTaskSource;
         private CancellationTokenSource _destroyTokenSource;
@@ -102,6 +103,31 @@ namespace BizSim.Google.Play.Games
             #endif
         }
 
+        public async Task<bool> CheckAuthenticatedAsync(CancellationToken cancellationToken = default)
+        {
+            #if UNITY_ANDROID && !UNITY_EDITOR
+            if (_authBridge == null)
+            {
+                BizSimGamesLogger.Warning("CheckAuthenticatedAsync: JNI bridge not initialized");
+                return false;
+            }
+
+            var tcs = TcsGuard.Replace(ref _authCheckTaskSource);
+
+            using (var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _destroyTokenSource.Token))
+            using (linkedCts.Token.Register(() => _authCheckTaskSource?.TrySetCanceled()))
+            {
+                BizSimGamesLogger.Info("Calling checkAuthenticated() on Java bridge");
+                _authBridge.Call("checkAuthenticated");
+
+                return await tcs.Task;
+            }
+            #else
+            await Task.CompletedTask;
+            return false;
+            #endif
+        }
+
         public async Task<string> RequestServerSideAccessAsync(string serverClientId, bool forceRefresh = false, CancellationToken cancellationToken = default)
         {
             #if UNITY_ANDROID && !UNITY_EDITOR
@@ -181,6 +207,12 @@ namespace BizSim.Google.Play.Games
 
             OnAuthenticationFailed?.Invoke(error);
             _authTaskSource?.TrySetException(new GamesAuthException(error));
+        }
+
+        internal void OnAuthCheckResult(bool authenticated)
+        {
+            BizSimGamesLogger.Info($"Silent auth check: authenticated={authenticated}");
+            _authCheckTaskSource?.TrySetResult(authenticated);
         }
 
         internal void OnServerSideAccessSuccess(string serverAuthCode)
@@ -344,6 +376,7 @@ namespace BizSim.Google.Play.Games
             _destroyTokenSource?.Dispose();
 
             _authTaskSource?.TrySetCanceled();
+            _authCheckTaskSource?.TrySetCanceled();
             _serverAccessTaskSource?.TrySetCanceled();
             _scopedAccessTaskSource?.TrySetCanceled();
 

@@ -16,6 +16,7 @@
     void onServerSideAccessFailure(int, java.lang.String);
     void onServerSideAccessWithScopesSuccess(java.lang.String, java.lang.String);
     void onServerSideAccessWithScopesFailure(int, java.lang.String);
+    void onAuthCheckResult(boolean);
 }
 
 -keep class com.google.android.gms.games.gamessignin.AuthResponse { *; }
