@@ -14,8 +14,8 @@ namespace BizSim.Google.Play.Games.Editor
     /// <remarks>
     /// <para>
     /// <b>Deprecated as of 1.3.0.</b> Dependency resolution now runs through the External
-    /// Dependency Manager for Unity (EDM4U), declared in <c>Editor/Dependencies.xml</c> and
-    /// pinned via <c>package.json</c> (<c>com.google.external-dependency-manager: 1.2.187</c>).
+    /// Dependency Manager (EDM), declared in <c>Editor/Dependencies.xml</c> and
+    /// pinned via <c>package.json</c> (<c>com.unity.external-dependency-manager: 2.1.0</c>).
     /// Consumers should run <b>Assets → External Dependency Manager → Android Resolver →
     /// Force Resolve</b> after install; that is the supported path from 1.3.0 onward.
     /// </para>

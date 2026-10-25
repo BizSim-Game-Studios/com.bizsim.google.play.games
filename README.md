@@ -24,27 +24,11 @@ Modular async Java-to-C# wrapper for authentication, achievements, leaderboards,
 
 ## Installation
 
-This package depends on Google's [External Dependency Manager for Unity (EDM4U)](https://github.com/googlesamples/unity-jar-resolver), which is published to the OpenUPM scoped registry. Add EDM4U's registry to your project's `Packages/manifest.json` once, then add this package as a Git URL — UPM will auto-install EDM4U on first import.
+This package depends on Unity's [External Dependency Manager (EDM)](https://docs.unity3d.com/Packages/com.unity.external-dependency-manager@2.1/manual/index.html) (`com.unity.external-dependency-manager`, Unity 2022.3+). It is declared in `package.json`, so the Unity Package Manager installs it from the Unity Registry together with this package; no scoped registry is needed. EDM reads this package's `Editor/Dependencies.xml`.
 
-**Step 1 — Add the OpenUPM scoped registry (one-time per project):**
+If the project still uses Google's EDM4U (for example through another SDK), Unity asks which manager stays active (`Assets → External Dependency Manager`). Keep EDM4U installed until every SDK that depends on it has migrated.
 
-```json
-{
-  "scopedRegistries": [
-    {
-      "name": "package.openupm.com",
-      "url": "https://package.openupm.com",
-      "scopes": [
-        "com.google.external-dependency-manager"
-      ]
-    }
-  ]
-}
-```
-
-If you already have other OpenUPM-distributed packages, you may already have this registry — just add `com.google.external-dependency-manager` to the existing `scopes` array.
-
-**Step 2 — Install this package via Git URL:**
+**Install this package via Git URL:**
 
 ```json
 {
@@ -54,7 +38,7 @@ If you already have other OpenUPM-distributed packages, you may already have thi
 }
 ```
 
-After the package imports, EDM4U is automatically resolved by UPM — no manual `.unitypackage` import required. EDM4U then resolves the Android Maven dependency declared in `Editor/Dependencies.xml` (`com.google.android.gms:play-services-games-v2:21.0.0`) at the next Android build, or immediately via `Assets → External Dependency Manager → Android Resolver → Force Resolve`. `com.google.android.gms:play-services-tasks` is not declared directly — it is pulled in transitively by Play Games Services v2. `androidx.activity:activity` is supplied by the package's bundled `.androidlib` module (used by the JNI fragment shim for PGS UI activity results).
+After the package imports, EDM is automatically installed by UPM — no manual `.unitypackage` import required. EDM then resolves the Android Maven dependency declared in `Editor/Dependencies.xml` (`com.google.android.gms:play-services-games-v2:21.0.0`) at the next Android build, or immediately via `Assets → External Dependency Manager → Android Resolver → Force Resolve`. `com.google.android.gms:play-services-tasks` is not declared directly — it is pulled in transitively by Play Games Services v2. `androidx.activity:activity` is supplied by the package's bundled `.androidlib` module (used by the JNI fragment shim for PGS UI activity results).
 
 ## Quick Start
 
@@ -115,7 +99,7 @@ After the package imports, EDM4U is automatically resolved by UPM — no manual 
 
 - Unity 6000.0 or later
 - Android target platform
-- **[EDM4U](https://github.com/googlesamples/unity-jar-resolver) (External Dependency Manager for Unity)** — auto-resolved via OpenUPM scoped registry (see Installation)
+- **[External Dependency Manager](https://docs.unity3d.com/Packages/com.unity.external-dependency-manager@2.1/manual/index.html)** (`com.unity.external-dependency-manager`) — installed automatically by UPM (see Installation)
 - Google Play Games Services v2 21.0.0 (resolved automatically via `Editor/Dependencies.xml`)
 
 ## Google Play Data Safety
@@ -146,7 +130,7 @@ This package's C# and Java source code is licensed under the [MIT License](LICEN
 
 ## Third-Party Licenses
 
-This package does **not** bundle any Google SDK binaries. The native Android dependencies are resolved at build time by [EDM4U](https://github.com/googlesamples/unity-jar-resolver) from the Google Maven repository (`maven.google.com`):
+This package does **not** bundle any Google SDK binaries. The native Android dependencies are resolved at build time by [Unity's External Dependency Manager](https://docs.unity3d.com/Packages/com.unity.external-dependency-manager@2.1/manual/index.html) from the Google Maven repository (`maven.google.com`):
 
 | Dependency | Version | Resolution | License |
 |-----------|---------|-----------|---------|
