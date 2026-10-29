@@ -127,7 +127,7 @@ namespace BizSim.Google.Play.Games
                     _statsProvider = new GamesStatsController();
                 if (_config.enableEvents)
                     _eventsProvider = new GamesEventsController();
-            #else
+            #elif UNITY_EDITOR
                 BizSimGamesLogger.Info("Platform: Editor (Mock Provider)");
                 var mockData = _config.editorMock;
                 if (_config.enableAuth)
@@ -142,6 +142,21 @@ namespace BizSim.Google.Play.Games
                     _statsProvider = new MockStatsProvider(mockData);
                 if (_config.enableEvents)
                     _eventsProvider = new MockEventsProvider(mockData);
+            #else
+                // iOS, standalone, WebGL: no mock data in a player, no service behind the calls.
+                BizSimGamesLogger.Info("Platform: unsupported (no-op providers)");
+                if (_config.enableAuth)
+                    _authProvider = new UnsupportedAuthProvider();
+                if (_config.enableAchievements)
+                    _achievementsProvider = new UnsupportedAchievementProvider();
+                if (_config.enableLeaderboards)
+                    _leaderboardsProvider = new UnsupportedLeaderboardProvider();
+                if (_config.enableCloudSave)
+                    _cloudSaveProvider = new UnsupportedCloudSaveProvider();
+                if (_config.enableStats)
+                    _statsProvider = new UnsupportedStatsProvider();
+                if (_config.enableEvents)
+                    _eventsProvider = new UnsupportedEventsProvider();
             #endif
         }
 

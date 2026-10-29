@@ -13,6 +13,9 @@ namespace BizSim.Google.Play.Games
     /// </summary>
     public interface IGamesCloudSaveProvider
     {
+        /// <summary>False on players with no backing service (iOS, standalone, WebGL): every call is a no-op with empty results.</summary>
+        bool IsSupported => true;
+
         /// <summary>
         /// Opens a snapshot for reading or writing (transaction start).
         /// IMPORTANT: Must call CommitSnapshotAsync after writing to save changes.

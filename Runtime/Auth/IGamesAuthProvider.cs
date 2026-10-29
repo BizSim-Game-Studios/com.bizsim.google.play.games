@@ -13,6 +13,9 @@ namespace BizSim.Google.Play.Games
     /// </summary>
     public interface IGamesAuthProvider
     {
+        /// <summary>False on players with no backing service (iOS, standalone, WebGL): every call is a no-op with empty results.</summary>
+        bool IsSupported => true;
+
         /// <summary>Fired when player successfully authenticates (silent or manual).</summary>
         event Action<GamesPlayer> OnAuthenticationSuccess;
 

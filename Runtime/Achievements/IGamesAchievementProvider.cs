@@ -13,6 +13,9 @@ namespace BizSim.Google.Play.Games
     /// </summary>
     public interface IGamesAchievementProvider
     {
+        /// <summary>False on players with no backing service (iOS, standalone, WebGL): every call is a no-op with empty results.</summary>
+        bool IsSupported => true;
+
         /// <summary>
         /// Unlocks an achievement immediately.
         /// </summary>
