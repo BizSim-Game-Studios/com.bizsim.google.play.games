@@ -34,17 +34,21 @@ public class AchievementBridge {
         this.activity = activity;
         this.achievementsClient = PlayGames.getAchievementsClient(activity);
 
-        this.achievementsLauncher = ((ComponentActivity) activity)
-                .getActivityResultRegistry()
-                .register(
-                        "bizsim_achievements",
-                        new ActivityResultContracts.StartActivityForResult(),
-                        result -> {
-                            if (callback != null) callback.onAchievementsUIClosed();
-                        }
-                );
-
-        Log.d(TAG, "AchievementBridge initialized with ActivityResultLauncher");
+        if (activity instanceof ComponentActivity) {
+            this.achievementsLauncher = ((ComponentActivity) activity)
+                    .getActivityResultRegistry()
+                    .register(
+                            "bizsim_achievements",
+                            new ActivityResultContracts.StartActivityForResult(),
+                            result -> {
+                                if (callback != null) callback.onAchievementsUIClosed();
+                            }
+                    );
+            Log.d(TAG, "AchievementBridge initialized with ActivityResultLauncher");
+        } else {
+            this.achievementsLauncher = null;
+            Log.d(TAG, "AchievementBridge initialized with legacy Activity fallback");
+        }
     }
 
     public void setCallback(IAchievementCallback callback) {
@@ -119,7 +123,13 @@ public class AchievementBridge {
         Log.d(TAG, "Showing achievements UI");
 
         achievementsClient.getAchievementsIntent()
-                .addOnSuccessListener(activity, achievementsLauncher::launch)
+                .addOnSuccessListener(activity, intent -> {
+                    if (achievementsLauncher != null) {
+                        achievementsLauncher.launch(intent);
+                    } else if (intent != null) {
+                        activity.startActivityForResult(intent, 9003);
+                    }
+                })
                 .addOnFailureListener(activity, e -> {
                     Log.e(TAG, "Failed to get achievements intent", e);
                     sendError(100, "Failed to show UI: " + e.getMessage(), null);
@@ -240,7 +250,9 @@ public class AchievementBridge {
     }
 
     public void shutdown() {
-        achievementsLauncher.unregister();
+        if (achievementsLauncher != null) {
+            achievementsLauncher.unregister();
+        }
         callback = null;
     }
 

@@ -49,15 +49,19 @@ public class CloudSaveBridge {
         this.activity = activity;
         this.snapshotsClient = PlayGames.getSnapshotsClient(activity);
 
-        this.savedGamesLauncher = ((ComponentActivity) activity)
-                .getActivityResultRegistry()
-                .register(
-                        "bizsim_saved_games",
-                        new ActivityResultContracts.StartActivityForResult(),
-                        this::handleSavedGamesResult
-                );
-
-        Log.d(TAG, "CloudSaveBridge initialized with ActivityResultLauncher");
+        if (activity instanceof ComponentActivity) {
+            this.savedGamesLauncher = ((ComponentActivity) activity)
+                    .getActivityResultRegistry()
+                    .register(
+                            "bizsim_saved_games",
+                            new ActivityResultContracts.StartActivityForResult(),
+                            this::handleSavedGamesResult
+                    );
+            Log.d(TAG, "CloudSaveBridge initialized with ActivityResultLauncher");
+        } else {
+            this.savedGamesLauncher = null;
+            Log.d(TAG, "CloudSaveBridge initialized with legacy Activity fallback");
+        }
     }
 
     public void setCallback(ICloudSaveCallback callback) {
@@ -217,8 +221,10 @@ public class CloudSaveBridge {
 
         snapshotsClient.getSelectSnapshotIntent(title, allowAddButton, allowDelete, maxSnapshots)
                 .addOnSuccessListener(activity, intent -> {
-                    if (intent != null) {
+                    if (intent != null && savedGamesLauncher != null) {
                         savedGamesLauncher.launch(intent);
+                    } else if (intent != null) {
+                        activity.startActivityForResult(intent, 9006);
                     } else {
                         Log.w(TAG, "getSelectSnapshotIntent returned null intent — UI not available");
                         ICloudSaveCallback cb = savedGamesCallback;
@@ -507,7 +513,9 @@ public class CloudSaveBridge {
     }
 
     public void shutdown() {
-        savedGamesLauncher.unregister();
+        if (savedGamesLauncher != null) {
+            savedGamesLauncher.unregister();
+        }
         ioExecutor.shutdownNow();
         lastConflict = null;
         savedGamesCallback = null;

@@ -32,27 +32,32 @@ public class LeaderboardBridge {
         this.activity = activity;
         this.leaderboardsClient = PlayGames.getLeaderboardsClient(activity);
 
-        this.leaderboardLauncher = ((ComponentActivity) activity)
-                .getActivityResultRegistry()
-                .register(
-                        "bizsim_leaderboard",
-                        new ActivityResultContracts.StartActivityForResult(),
-                        result -> {
-                            if (callback != null) callback.onLeaderboardUIClosed();
-                        }
-                );
+        if (activity instanceof ComponentActivity) {
+            this.leaderboardLauncher = ((ComponentActivity) activity)
+                    .getActivityResultRegistry()
+                    .register(
+                            "bizsim_leaderboard",
+                            new ActivityResultContracts.StartActivityForResult(),
+                            result -> {
+                                if (callback != null) callback.onLeaderboardUIClosed();
+                            }
+                    );
 
-        this.allLeaderboardsLauncher = ((ComponentActivity) activity)
-                .getActivityResultRegistry()
-                .register(
-                        "bizsim_all_leaderboards",
-                        new ActivityResultContracts.StartActivityForResult(),
-                        result -> {
-                            if (callback != null) callback.onLeaderboardUIClosed();
-                        }
-                );
-
-        Log.d(TAG, "LeaderboardBridge initialized with ActivityResultLauncher");
+            this.allLeaderboardsLauncher = ((ComponentActivity) activity)
+                    .getActivityResultRegistry()
+                    .register(
+                            "bizsim_all_leaderboards",
+                            new ActivityResultContracts.StartActivityForResult(),
+                            result -> {
+                                if (callback != null) callback.onLeaderboardUIClosed();
+                            }
+                    );
+            Log.d(TAG, "LeaderboardBridge initialized with ActivityResultLauncher");
+        } else {
+            this.leaderboardLauncher = null;
+            this.allLeaderboardsLauncher = null;
+            Log.d(TAG, "LeaderboardBridge initialized with legacy Activity fallback");
+        }
     }
 
     public void setCallback(ILeaderboardCallback callback) {
@@ -75,13 +80,25 @@ public class LeaderboardBridge {
 
     public void showLeaderboardUI(String leaderboardId) {
         leaderboardsClient.getLeaderboardIntent(leaderboardId)
-                .addOnSuccessListener(activity, leaderboardLauncher::launch)
+                .addOnSuccessListener(activity, intent -> {
+                    if (leaderboardLauncher != null) {
+                        leaderboardLauncher.launch(intent);
+                    } else if (intent != null) {
+                        activity.startActivityForResult(intent, 9004);
+                    }
+                })
                 .addOnFailureListener(activity, e -> sendError(100, e.getMessage(), leaderboardId));
     }
 
     public void showAllLeaderboardsUI() {
         leaderboardsClient.getAllLeaderboardsIntent()
-                .addOnSuccessListener(activity, allLeaderboardsLauncher::launch)
+                .addOnSuccessListener(activity, intent -> {
+                    if (allLeaderboardsLauncher != null) {
+                        allLeaderboardsLauncher.launch(intent);
+                    } else if (intent != null) {
+                        activity.startActivityForResult(intent, 9005);
+                    }
+                })
                 .addOnFailureListener(activity, e -> sendError(100, e.getMessage(), null));
     }
 
@@ -144,8 +161,12 @@ public class LeaderboardBridge {
     }
 
     public void shutdown() {
-        leaderboardLauncher.unregister();
-        allLeaderboardsLauncher.unregister();
+        if (leaderboardLauncher != null) {
+            leaderboardLauncher.unregister();
+        }
+        if (allLeaderboardsLauncher != null) {
+            allLeaderboardsLauncher.unregister();
+        }
         callback = null;
     }
 

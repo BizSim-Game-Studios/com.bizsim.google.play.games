@@ -33,7 +33,7 @@ namespace BizSim.Google.Play.Games
             catch (Exception ex)
             {
                 string shortName = JavaClassName.Substring(JavaClassName.LastIndexOf('.') + 1);
-                BizSimGamesLogger.Error($"Failed to initialize {shortName}: {ex}");
+                BizSimGamesLogger.Warning($"Failed to initialize {shortName}: {ex.Message}");
                 throw new GamesNativeBridgeException(JavaClassName, ex);
             }
         }

@@ -116,17 +116,17 @@ namespace BizSim.Google.Play.Games
             #if UNITY_ANDROID && !UNITY_EDITOR
                 BizSimGamesLogger.Info("Platform: Android (JNI Bridge)");
                 if (_config.enableAuth)
-                    _authProvider = new GamesAuthController();
+                    _authProvider = TryCreateProvider(() => (IGamesAuthProvider)new GamesAuthController(), () => new UnsupportedAuthProvider(), "Auth");
                 if (_config.enableAchievements)
-                    _achievementsProvider = new GamesAchievementController();
+                    _achievementsProvider = TryCreateProvider(() => (IGamesAchievementProvider)new GamesAchievementController(), () => new UnsupportedAchievementProvider(), "Achievements");
                 if (_config.enableLeaderboards)
-                    _leaderboardsProvider = new GamesLeaderboardController();
+                    _leaderboardsProvider = TryCreateProvider(() => (IGamesLeaderboardProvider)new GamesLeaderboardController(), () => new UnsupportedLeaderboardProvider(), "Leaderboards");
                 if (_config.enableCloudSave)
-                    _cloudSaveProvider = new GamesCloudSaveController();
+                    _cloudSaveProvider = TryCreateProvider(() => (IGamesCloudSaveProvider)new GamesCloudSaveController(), () => new UnsupportedCloudSaveProvider(), "CloudSave");
                 if (_config.enableStats)
-                    _statsProvider = new GamesStatsController();
+                    _statsProvider = TryCreateProvider(() => (IGamesStatsProvider)new GamesStatsController(), () => new UnsupportedStatsProvider(), "Stats");
                 if (_config.enableEvents)
-                    _eventsProvider = new GamesEventsController();
+                    _eventsProvider = TryCreateProvider(() => (IGamesEventsProvider)new GamesEventsController(), () => new UnsupportedEventsProvider(), "Events");
             #elif UNITY_EDITOR
                 BizSimGamesLogger.Info("Platform: Editor (Mock Provider)");
                 var mockData = _config.editorMock;
@@ -158,6 +158,19 @@ namespace BizSim.Google.Play.Games
                 if (_config.enableEvents)
                     _eventsProvider = new UnsupportedEventsProvider();
             #endif
+        }
+
+        private static T TryCreateProvider<T>(Func<T> factory, Func<T> fallback, string name)
+        {
+            try
+            {
+                return factory();
+            }
+            catch (Exception ex)
+            {
+                BizSimGamesLogger.Warning($"Failed to initialize {name} provider, falling back to unsupported: {ex.Message}");
+                return fallback();
+            }
         }
 
         private void ResolveConfig()
