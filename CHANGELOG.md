@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-11-06
+
+### Added
+- **Deferred start.** `GamesServicesConfig.deferStart` (default off, old behaviour) makes
+  `GamesServicesManager` skip provider creation at `BeforeSceneLoad`. On Android that also skips
+  `PlayGamesSdk.initialize`, so Play Games' automatic sign-in does not begin before the game knows the
+  player's age answer. The game calls `GamesServicesManager.StartServices()` (idempotent, main thread)
+  when it may; `GamesServicesManager.IsStarted` and the static `Started` event report it. Services are
+  null until started.
+
 ## [1.5.2] - 2026-10-29
 
 ### Fixed
