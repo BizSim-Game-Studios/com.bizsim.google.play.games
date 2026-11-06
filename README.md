@@ -66,6 +66,11 @@ After the package imports, EDM is automatically installed by UPM — no manual `
    }
    ```
 
+   **Waiting for a consent or age answer first?** Tick `deferStart` on the `GamesServicesConfig` asset. The manager then
+   creates no providers and does not initialize the Play Games SDK (so no automatic sign-in begins) until you call
+   `GamesServicesManager.StartServices()`. `GamesServicesManager.IsStarted` and the static `Started` event report it;
+   `Auth`, `Achievements` and the other services are `null` until then.
+
 3. Unlock an achievement and submit a leaderboard score:
    ```csharp
    await GamesServicesManager.Achievements.UnlockAchievementAsync("achievement_first_win");

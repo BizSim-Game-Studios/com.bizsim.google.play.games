@@ -24,6 +24,28 @@ namespace BizSim.Google.Play.Games
         private IGamesCloudSaveProvider _cloudSaveProvider;
         private IGamesStatsProvider _statsProvider;
         private IGamesEventsProvider _eventsProvider;
+        private bool _started;
+
+        /// <summary>
+        /// True once the providers exist. Always true right after startup unless
+        /// <see cref="GamesServicesConfig.deferStart"/> is set, in which case it turns true
+        /// when <see cref="StartServices"/> runs.
+        /// </summary>
+        public static bool IsStarted => _instance != null && _instance._started;
+
+        /// <summary>Raised once, on the main thread, after the providers were created.</summary>
+        public static event Action Started;
+
+        /// <summary>
+        /// Creates the providers (on Android this initializes the Play Games SDK, which begins
+        /// the automatic sign-in). Only needed with <see cref="GamesServicesConfig.deferStart"/>;
+        /// idempotent. Call it from the main thread, e.g. after the age answer is known.
+        /// </summary>
+        public static void StartServices()
+        {
+            var manager = Instance;
+            if (manager != null) manager.StartInternal();
+        }
 
         public static GamesServicesManager Instance
         {
@@ -103,13 +125,27 @@ namespace BizSim.Google.Play.Games
             }
 
             _instance = this;
+            ResolveConfig();
+
+            if (_config.deferStart)
+            {
+                BizSimGamesLogger.Info("Start deferred: call GamesServicesManager.StartServices()");
+                return;
+            }
+
+            StartInternal();
+        }
+
+        private void StartInternal()
+        {
+            if (_started) return;
+            _started = true;
             InitializeServices();
+            Started?.Invoke();
         }
 
         private void InitializeServices()
         {
-            ResolveConfig();
-
             if (_config.debugMode)
                 BizSimGamesLogger.ForceDebug = true;
 

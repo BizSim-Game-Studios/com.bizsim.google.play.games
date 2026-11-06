@@ -18,6 +18,10 @@ namespace BizSim.Google.Play.Games
         public bool enableEvents = false;
         public bool enableStats = true;
 
+        [Header("Startup")]
+        [Tooltip("Do not create the providers (and on Android do not initialize the Play Games SDK, which begins automatic sign-in) at startup. The game calls GamesServicesManager.StartServices() once it may, e.g. after the age answer.")]
+        public bool deferStart = false;
+
         [Header("Sidekick")]
         [Tooltip("Enable Play Console Sidekick features. Requires achievements + cloud save at minimum.")]
         public bool sidekickReady = false;
