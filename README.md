@@ -66,7 +66,7 @@ After the package imports, EDM is automatically installed by UPM — no manual `
    }
    ```
 
-   **Waiting for a consent or age answer first?** Tick `deferStart` on the `GamesServicesConfig` asset. The manager then
+   **Waiting for a consent or age answer first?** Any game with an age screen must set `deferStart` (it is opt-in; the default stays off so games without an age screen are unchanged). Tick `deferStart` on the `GamesServicesConfig` asset. The manager then
    creates no providers and does not initialize the Play Games SDK (so no automatic sign-in begins) until you call
    `GamesServicesManager.StartServices()`. `GamesServicesManager.IsStarted` and the static `Started` event report it;
    `Auth`, `Achievements` and the other services are `null` until then.
