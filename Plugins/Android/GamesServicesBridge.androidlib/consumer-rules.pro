@@ -45,6 +45,7 @@
     void onSnapshotDeleted(java.lang.String);
     void onSavedGamesUIResult(java.lang.String);
     void onConflictDetected(java.lang.String, java.lang.String, java.lang.String, java.lang.String);
+    void onConflictRejected(java.lang.String, java.lang.String, java.lang.String);
     void onCloudSaveError(int, java.lang.String, java.lang.String);
 }
 

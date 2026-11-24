@@ -467,6 +467,7 @@ Releases all cached cover image textures. Call this when leaving the saved games
 
 | Field | Type | Description |
 |-------|------|-------------|
+| `operation` | `CloudSaveOperation` | The call that met the conflict (`Open`, `Read`, `Commit`, `Delete`) |
 | `localSnapshot` | `SnapshotHandle` | Local device snapshot |
 | `serverSnapshot` | `SnapshotHandle` | Cloud server snapshot |
 | `localData` | `byte[]` | Local save data |
@@ -480,6 +481,7 @@ Releases all cached cover image textures. Call this when leaving the saved games
 | `UseLocal` | Keep local data, discard cloud |
 | `UseServer` | Keep cloud data, discard local |
 | `UseManual` | Custom merge (not implemented, falls back to UseLocal) |
+| `UseLocalAndWrite` | Commit only: write this save over the server copy, after the player chose it |
 
 #### CloudSaveErrorType
 
@@ -491,6 +493,7 @@ Releases all cached cover image textures. Call this when leaving the saved games
 | `NetworkError` | 2 | Device offline |
 | `SnapshotNotFound` | 3 | Filename does not exist |
 | `ConflictTimeout` | 4 | Conflict resolution timed out |
+| `Conflict` | 6 | Commit or delete met a conflict, server copy kept (`GamesCloudSaveConflictException`) |
 | `DataTooLarge` | 5 | Data exceeds 3MB limit |
 | `InternalError` | 100 | Internal SDK error |
 

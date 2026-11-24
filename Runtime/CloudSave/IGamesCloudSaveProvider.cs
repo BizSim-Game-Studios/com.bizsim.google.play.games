@@ -137,8 +137,9 @@ namespace BizSim.Google.Play.Games
         event Action<string> OnSnapshotCommitted;
 
         /// <summary>
-        /// Event fired when a conflict is detected during save.
-        /// Game must handle conflict resolution via SavedGameConflict.ResolveAsync.
+        /// Event fired when a call (open, read, commit, delete) meets a conflict. After the answer an open or read goes on;
+        /// a commit or delete fails with GamesCloudSaveConflictException (a commit answered UseLocalAndWrite writes).
+        /// Answer with SavedGameConflict.ResolveAsync; with no answer in conflictTimeoutSeconds, UseServer is chosen.
         /// </summary>
         event Action<SavedGameConflict> OnConflictDetected;
 

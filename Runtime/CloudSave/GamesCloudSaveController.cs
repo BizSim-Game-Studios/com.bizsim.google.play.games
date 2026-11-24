@@ -27,7 +27,7 @@ namespace BizSim.Google.Play.Games
         private TaskCompletionSource<bool> _commitTcs;
         private TaskCompletionSource<bool> _deleteTcs;
         private TaskCompletionSource<string> _showUITcs;
-        private TaskCompletionSource<ConflictResolution> _conflictTcs;
+        private int _conflictsWaiting; // the game is deciding: the pending call does not time out
 
         private readonly Dictionary<string, Texture2D> _coverImageCache = new();
 
@@ -59,7 +59,7 @@ namespace BizSim.Google.Play.Games
             {
                 CallBridge("openSnapshot", filename, createIfNotFound);
                 BizSimGamesLogger.Info($"[CloudSave] OpenSnapshotAsync: JNI bridge called, awaiting response...");
-                var result = await tcs.Task.WithJniTimeout(tcs, ct: ct);
+                var result = await tcs.Task.WithJniTimeout(tcs, ct: ct, hold: () => _conflictsWaiting > 0);
                 BizSimGamesLogger.Info($"[CloudSave] OpenSnapshotAsync DONE: filename='{result.filename}', hasConflict={result.hasConflict}, nativeHandle={result.nativeHandle != null}");
                 return result;
             }
@@ -82,7 +82,7 @@ namespace BizSim.Google.Play.Games
                 // long after the fact instead of a Timeout it can report and retry.
                 // Safe at the shared 30s budget because the download happens in
                 // openSnapshot - readSnapshot only hands over contents already on device.
-                var data = await tcs.Task.WithJniTimeout(tcs, ct: ct);
+                var data = await tcs.Task.WithJniTimeout(tcs, ct: ct, hold: () => _conflictsWaiting > 0);
                 BizSimGamesLogger.Info($"[CloudSave] ReadSnapshotAsync DONE: {data?.Length ?? 0} bytes");
                 return data;
             }
@@ -108,7 +108,7 @@ namespace BizSim.Google.Play.Games
             {
                 CallBridge("commitSnapshot", handle.nativeHandle, data,
                     description ?? "", playedTimeMillis, coverImage);
-                await tcs.Task.WithJniTimeout(tcs, ct: ct);
+                await tcs.Task.WithJniTimeout(tcs, ct: ct, hold: () => _conflictsWaiting > 0);
             }
         }
 
@@ -120,7 +120,7 @@ namespace BizSim.Google.Play.Games
             using (ct.Register(() => tcs.TrySetCanceled()))
             {
                 CallBridge("deleteSnapshot", filename);
-                await tcs.Task.WithJniTimeout(tcs, ct: ct);
+                await tcs.Task.WithJniTimeout(tcs, ct: ct, hold: () => _conflictsWaiting > 0);
             }
         }
 
@@ -150,9 +150,6 @@ namespace BizSim.Google.Play.Games
 
             var handle = await OpenSnapshotAsync(filename, true, ct);
 
-            if (handle.hasConflict)
-                handle = await HandleConflictWithTimeout(ct);
-
             await CommitSnapshotAsync(handle, data, description, 0, null, ct);
         }
 
@@ -161,9 +158,6 @@ namespace BizSim.Google.Play.Games
             ValidateMetadata(metadata);
 
             var handle = await OpenSnapshotAsync(filename, true, ct);
-
-            if (handle.hasConflict)
-                handle = await HandleConflictWithTimeout(ct);
 
             await CommitSnapshotAsync(handle, data, metadata?.description,
                 metadata?.playedTimeMillis ?? 0, metadata?.coverImage, ct);
@@ -252,69 +246,6 @@ namespace BizSim.Google.Play.Games
                     "(Google limit: 800KB). Consider resizing to 640x360.");
         }
 
-        private SavedGameConflict _lastConflict;
-
-        private async Task<SnapshotHandle> HandleConflictWithTimeout(CancellationToken ct)
-        {
-            _conflictTcs = new TaskCompletionSource<ConflictResolution>();
-
-            int timeoutSeconds = ConflictTimeoutSeconds;
-            ConflictResolution resolution;
-
-            if (timeoutSeconds <= 0)
-            {
-                resolution = ResolveByTimestamp();
-            }
-            else
-            {
-                try
-                {
-                    var timeoutTask = Task.Delay(TimeSpan.FromSeconds(timeoutSeconds), ct);
-                    var completedTask = await Task.WhenAny(_conflictTcs.Task, timeoutTask);
-
-                    if (completedTask == timeoutTask)
-                    {
-                        resolution = ResolveByTimestamp();
-                        BizSimGamesLogger.Warning($"Conflict resolution timeout ({timeoutSeconds}s) - auto-resolved: {resolution}");
-                    }
-                    else
-                    {
-                        resolution = await _conflictTcs.Task;
-                    }
-                }
-                catch (OperationCanceledException)
-                {
-                    resolution = ResolveByTimestamp();
-                    BizSimGamesLogger.Warning($"Conflict resolution cancelled - auto-resolved: {resolution}");
-                }
-            }
-
-            var tcs = TcsGuard.Replace(ref _openTcs);
-
-            CallBridge("resolveConflict", resolution.ToString(), "");
-
-            var resolvedHandle = await tcs.Task;
-            return resolvedHandle;
-        }
-
-        private ConflictResolution ResolveByTimestamp()
-        {
-            if (_lastConflict == null)
-                return ConflictResolution.UseServer;
-
-            long localTime = _lastConflict.localSnapshot?.lastModifiedTimestamp ?? 0;
-            long serverTime = _lastConflict.serverSnapshot?.lastModifiedTimestamp ?? 0;
-
-            if (localTime > serverTime)
-            {
-                BizSimGamesLogger.Info($"[CloudSave] Auto-resolve: UseLocal (local={localTime} > server={serverTime})");
-                return ConflictResolution.UseLocal;
-            }
-
-            BizSimGamesLogger.Info($"[CloudSave] Auto-resolve: UseServer (server={serverTime} >= local={localTime})");
-            return ConflictResolution.UseServer;
-        }
-
         public async Task<byte[]> LoadAsync(string filename, CancellationToken ct = default)
         {
             BizSimGamesLogger.Info($"[CloudSave] LoadAsync START: filename='{filename}'");
@@ -375,61 +306,112 @@ namespace BizSim.Google.Play.Games
             BizSimGamesLogger.Info($"[CloudSave] OnSavedGamesUIResultFromJava: TrySetResult={wasSet}");
         }
 
+        [Serializable, UnityEngine.Scripting.Preserve]
+        private class ConflictInfo
+        {
+            public string conflictKey;
+            public string conflictOperation;
+        }
+
         internal void OnConflictDetectedFromJava(string localSnapshotJson, string serverSnapshotJson,
             byte[] localData, byte[] serverData)
         {
             try
             {
+                var info = JsonUtility.FromJson<ConflictInfo>(serverSnapshotJson);
+                bool answered = false;
+                bool waiting = false;
+
+                void Answer(ConflictResolution resolution)
+                {
+                    if (answered) return;
+                    answered = true;
+                    if (waiting && _conflictsWaiting > 0) _conflictsWaiting--;
+                    if (Bridge == null) return; // disposed
+
+                    // UseManual is not implemented and means UseLocal.
+                    var choice = resolution == ConflictResolution.UseManual
+                        ? ConflictResolution.UseLocal
+                        : resolution;
+                    CallBridge("resolveConflict", choice.ToString(), info.conflictKey);
+                }
+
                 var conflict = new SavedGameConflict
                 {
+                    operation = ParseOperation(info.conflictOperation),
                     localSnapshot = JsonUtility.FromJson<SnapshotHandle>(localSnapshotJson),
                     serverSnapshot = JsonUtility.FromJson<SnapshotHandle>(serverSnapshotJson),
                     localData = localData,
                     serverData = serverData,
-                    ResolveAsync = async (resolution) =>
+                    ResolveAsync = resolution =>
                     {
-                        _conflictTcs?.TrySetResult(resolution);
-                        await Task.CompletedTask;
+                        Answer(resolution);
+                        return Task.CompletedTask;
                     }
                 };
 
-                _lastConflict = conflict;
-
+                // On a conflict the Java bridge calls onConflictDetected INSTEAD of the answer the
+                // pending call waits for, so every conflict must be resolved or that call hangs.
+                // A subscriber answers with ResolveAsync; without one, or with no answer in
+                // conflictTimeoutSeconds, UseServer is chosen.
+                //
+                // UseServer, never the newer timestamp: a fresh install auto-saves within minutes,
+                // so its empty save is newer than the months-old real one, and "newest wins" would
+                // discard the progress the player is trying to recover. For the same reason a commit
+                // or delete keeps the server copy and fails (OnConflictRejectedFromJava).
                 var handler = OnConflictDetected;
-                handler?.Invoke(conflict);
+                int timeoutSeconds = handler != null ? ConflictTimeoutSeconds : 0;
 
-                // Without this the open task hangs FOREVER. On a conflict the Java bridge
-                // calls onConflictDetected INSTEAD of onSnapshotOpened, so _openTcs is left
-                // pending and nothing else in the pipeline ever completes it - the await
-                // ends only when OnDispose cancels it, which surfaces as an unexplained
-                // OperationCanceledException minutes later. Measured 2026-08-22 against
-                // Junkyard Tycoon's cloud_load_result telemetry: error_type=Canceled with no
-                // preceding cloud_load_attempt, on players restoring after a reinstall -
-                // exactly the case Play Games reports as a conflict.
-                //
-                // _conflictTcs non-null means HandleConflictWithTimeout is already awaiting
-                // an answer and owns the resolution; a subscriber means the game answers.
-                // With neither, resolving here is the only thing that can free the caller.
-                //
-                // UseServer, never ResolveByTimestamp: the newer snapshot is the WRONG
-                // answer for the case that actually happens. A fresh install auto-saves
-                // within minutes, so its empty save is newer than the months-old real one,
-                // and "newest wins" would quietly discard the progress the player is trying
-                // to recover. UseServer is safe on every path - a restore wants the cloud
-                // copy by definition, and a save commits its own bytes over whichever
-                // snapshot it resolved to, so the choice cannot cost the player a save.
-                if (_conflictTcs == null && handler == null)
+                if (timeoutSeconds > 0)
                 {
-                    BizSimGamesLogger.Warning(
-                        "[CloudSave] Conflict with no resolver - auto-resolving UseServer to " +
-                        "release the pending open");
-                    CallBridge("resolveConflict", ConflictResolution.UseServer.ToString(), "");
+                    waiting = true;
+                    _conflictsWaiting++;
                 }
+
+                try
+                {
+                    handler?.Invoke(conflict);
+                }
+                catch (Exception ex)
+                {
+                    BizSimGamesLogger.Error($"[CloudSave] OnConflictDetected handler failed: {ex.Message}");
+                }
+
+                if (timeoutSeconds > 0)
+                    _ = AnswerAfterTimeout(Answer, timeoutSeconds);
+                else
+                    Answer(ConflictResolution.UseServer);
             }
             catch (Exception ex)
             {
                 BizSimGamesLogger.Error($"Conflict handling error: {ex.Message}");
             }
+        }
+
+        private static CloudSaveOperation ParseOperation(string name) =>
+            Enum.TryParse(name, out CloudSaveOperation operation) ? operation : CloudSaveOperation.Open;
+
+        internal void OnConflictRejectedFromJava(string operationName, string filename, string serverSnapshotJson)
+        {
+            var operation = ParseOperation(operationName);
+            var error = new GamesCloudSaveError((int)CloudSaveErrorType.Conflict,
+                $"{operation} met a save conflict; the server copy was kept", filename);
+            SnapshotHandle server = null;
+            try { server = JsonUtility.FromJson<SnapshotHandle>(serverSnapshotJson); }
+            catch (Exception ex) { BizSimGamesLogger.Error($"[CloudSave] Server snapshot parse failed: {ex.Message}"); }
+
+            var exception = new GamesCloudSaveConflictException(error, operation, server);
+            if (operation == CloudSaveOperation.Delete)
+                _deleteTcs?.TrySetException(exception);
+            else
+                _commitTcs?.TrySetException(exception);
+            OnCloudSaveError?.Invoke(error);
+        }
+
+        private static async Task AnswerAfterTimeout(Action<ConflictResolution> answer, int timeoutSeconds)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(timeoutSeconds));
+            answer(ConflictResolution.UseServer);
         }
 
         internal void OnCloudSaveErrorFromJava(int errorCode, string errorMessage, string filename)
@@ -452,6 +434,7 @@ namespace BizSim.Google.Play.Games
 
         protected override void OnDispose()
         {
+            _conflictsWaiting = 0;
             _openTcs?.TrySetCanceled();
             _readTcs?.TrySetCanceled();
             _commitTcs?.TrySetCanceled();

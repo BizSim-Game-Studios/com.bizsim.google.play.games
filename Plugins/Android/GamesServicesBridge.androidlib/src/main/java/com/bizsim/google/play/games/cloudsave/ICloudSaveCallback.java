@@ -9,5 +9,6 @@ public interface ICloudSaveCallback {
     void onSnapshotDeleted(String filename);
     void onSavedGamesUIResult(String selectedFilename);
     void onConflictDetected(String localSnapshotJson, String serverSnapshotJson, String localDataBase64, String serverDataBase64);
+    void onConflictRejected(String operation, String filename, String serverSnapshotJson);
     void onCloudSaveError(int errorCode, String errorMessage, String filename);
 }

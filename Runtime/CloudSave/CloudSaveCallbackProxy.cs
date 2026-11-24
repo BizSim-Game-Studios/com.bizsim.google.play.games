@@ -57,6 +57,12 @@ namespace BizSim.Google.Play.Games
             UnityMainThreadDispatcher.Enqueue(() => _controller.OnConflictDetectedFromJava(localSnapshotJson, serverSnapshotJson, localData, serverData));
         }
 
+        void onConflictRejected(string operation, string filename, string serverSnapshotJson)
+        {
+            BizSimGamesLogger.Warning($"[CloudSave][JNI→Unity] onConflictRejected: operation={operation}, filename='{filename}'");
+            UnityMainThreadDispatcher.Enqueue(() => _controller.OnConflictRejectedFromJava(operation, filename, serverSnapshotJson));
+        }
+
         void onCloudSaveError(int errorCode, string errorMessage, string filename)
         {
             // Code 3 (SnapshotNotFound) is an expected first-run answer, not a failure —

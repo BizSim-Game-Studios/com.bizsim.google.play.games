@@ -20,7 +20,8 @@ namespace BizSim.Google.Play.Games
             this Task<T> task,
             TaskCompletionSource<T> tcs,
             int timeoutMs = 0,
-            CancellationToken ct = default)
+            CancellationToken ct = default,
+            Func<bool> hold = null)
         {
             if (timeoutMs <= 0)
                 timeoutMs = ResolveTimeoutMs();
@@ -32,6 +33,13 @@ namespace BizSim.Google.Play.Games
             var timeoutTask = Task.Delay(timeoutMs, timeoutCts.Token);
 
             var completedTask = await Task.WhenAny(task, timeoutTask);
+
+            // Held while the game answers something this call waits for (a save conflict).
+            while (completedTask == timeoutTask && !ct.IsCancellationRequested && hold != null && hold())
+            {
+                timeoutTask = Task.Delay(timeoutMs, timeoutCts.Token);
+                completedTask = await Task.WhenAny(task, timeoutTask);
+            }
 
             startTime.Stop();
 

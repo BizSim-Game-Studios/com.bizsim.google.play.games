@@ -26,13 +26,22 @@ import com.google.android.gms.games.snapshot.SnapshotMetadataChange;
 
 import org.json.JSONObject;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 
 public class CloudSaveBridge {
     private static final String TAG = "BizSimGames.CloudSave";
     private static final int CONFLICT_RESOLUTION_POLICY_MANUAL = -1;
+
+    // Names match CloudSaveOperation on the C# side.
+    private static final String OP_OPEN = "Open";
+    private static final String OP_READ = "Read";
+    private static final String OP_COMMIT = "Commit";
+    private static final String OP_DELETE = "Delete";
 
     private final Activity activity;
     private final SnapshotsClient snapshotsClient;
@@ -71,24 +80,30 @@ public class CloudSaveBridge {
     public void openSnapshot(String filename, boolean createIfNotFound) {
         Log.d(TAG, "Opening snapshot: " + filename);
 
+        openThen(OP_OPEN, filename, createIfNotFound, snapshot -> {
+            try {
+                String snapshotJson = serializeSnapshot(snapshot);
+                if (callback != null) {
+                    callback.onSnapshotOpened(filename, snapshotJson, false);
+                }
+            } catch (Exception e) {
+                sendFailure("Failed to serialize snapshot: " + e.getMessage(), filename, e);
+            }
+        });
+    }
+
+    // Opens the snapshot and hands it to the operation. On a conflict the operation waits for resolveConflict.
+    private void openThen(String operation, String filename, boolean createIfNotFound, SnapshotAction action) {
         snapshotsClient.open(filename, createIfNotFound, CONFLICT_RESOLUTION_POLICY_MANUAL)
                 .addOnSuccessListener(activity, dataOrConflict -> {
                     if (dataOrConflict.isConflict()) {
-                        Log.w(TAG, "Conflict detected for: " + filename);
-                        handleConflict(dataOrConflict.getConflict());
+                        Log.w(TAG, operation + ": conflict detected for: " + filename);
+                        handleConflict(dataOrConflict.getConflict(), operation, filename, action);
                     } else {
-                        Snapshot snapshot = dataOrConflict.getData();
-                        try {
-                            String snapshotJson = serializeSnapshot(snapshot);
-                            if (callback != null) {
-                                callback.onSnapshotOpened(filename, snapshotJson, false);
-                            }
-                        } catch (Exception e) {
-                            sendFailure("Failed to serialize snapshot: " + e.getMessage(), filename, e);
-                        }
+                        action.run(dataOrConflict.getData());
                     }
                 })
-                .addOnFailureListener(activity, e -> sendOpenFailure("Open", filename, e));
+                .addOnFailureListener(activity, e -> sendOpenFailure(operation, filename, e));
     }
 
     public void readSnapshot(String nativeHandle) {
@@ -101,27 +116,16 @@ public class CloudSaveBridge {
         }
 
         String filename = parts[1];
-        pendingConflictOp = "read";
-        snapshotsClient.open(filename, false, CONFLICT_RESOLUTION_POLICY_MANUAL)
-                .addOnSuccessListener(activity, dataOrConflict -> {
-                    if (dataOrConflict.isConflict()) {
-                        handleConflict(dataOrConflict.getConflict());
-                    } else {
-                        pendingConflictOp = null;
-                        Snapshot snapshot = dataOrConflict.getData();
-                        ioExecutor.execute(() -> {
-                            try {
-                                byte[] data = snapshot.getSnapshotContents().readFully();
-                                if (callback != null) {
-                                    callback.onSnapshotRead(filename, toBase64(data));
-                                }
-                            } catch (Exception e) {
-                                sendFailure("Read failed: " + e.getMessage(), filename, e);
-                            }
-                        });
-                    }
-                })
-                .addOnFailureListener(activity, e -> sendOpenFailure("Read open", filename, e));
+        openThen(OP_READ, filename, false, snapshot -> ioExecutor.execute(() -> {
+            try {
+                byte[] data = snapshot.getSnapshotContents().readFully();
+                if (callback != null) {
+                    callback.onSnapshotRead(filename, toBase64(data));
+                }
+            } catch (Exception e) {
+                sendFailure("Read failed: " + e.getMessage(), filename, e);
+            }
+        }));
     }
 
     public void commitSnapshot(String nativeHandle, byte[] data, String description, long playedTimeMillis, byte[] coverImage) {
@@ -134,84 +138,69 @@ public class CloudSaveBridge {
         }
 
         String filename = parts[1];
-        snapshotsClient.open(filename, true, CONFLICT_RESOLUTION_POLICY_MANUAL)
-                .addOnSuccessListener(activity, dataOrConflict -> {
-                    if (dataOrConflict.isConflict()) {
-                        handleConflict(dataOrConflict.getConflict());
-                    } else {
-                        Snapshot snapshot = dataOrConflict.getData();
-                        ioExecutor.execute(() -> {
-                            try {
-                                snapshot.getSnapshotContents().writeBytes(data);
+        openThen(OP_COMMIT, filename, true, snapshot ->
+                writeAndCommit(snapshot, filename, data, description, playedTimeMillis, coverImage));
+    }
 
-                                SnapshotMetadataChange.Builder metaBuilder = new SnapshotMetadataChange.Builder()
-                                        .setPlayedTimeMillis(playedTimeMillis);
+    private void writeAndCommit(Snapshot snapshot, String filename, byte[] data, String description,
+            long playedTimeMillis, byte[] coverImage) {
+        ioExecutor.execute(() -> {
+            try {
+                snapshot.getSnapshotContents().writeBytes(data);
 
-                                if (description != null && !description.isEmpty()) {
-                                    metaBuilder.setDescription(description);
-                                }
+                SnapshotMetadataChange.Builder metaBuilder = new SnapshotMetadataChange.Builder()
+                        .setPlayedTimeMillis(playedTimeMillis);
 
-                                if (coverImage != null && coverImage.length > 0) {
-                                    try {
-                                        Bitmap bitmap = decodeCoverImageSafe(coverImage);
-                                        if (bitmap != null) {
-                                            metaBuilder.setCoverImage(bitmap);
-                                        }
-                                    } catch (OutOfMemoryError e) {
-                                        Log.e(TAG,
-                                            "Cover image decode OOM (" + coverImage.length + " bytes). " +
-                                            "Use max 640x360 resolution. Save continues without cover image.", e);
-                                    }
-                                }
+                if (description != null && !description.isEmpty()) {
+                    metaBuilder.setDescription(description);
+                }
 
-                                SnapshotMetadataChange metaChange = metaBuilder.build();
-
-                                snapshotsClient.commitAndClose(snapshot, metaChange)
-                                        .addOnSuccessListener(activity, metadata -> {
-                                            Log.d(TAG, "Snapshot committed: " + filename);
-                                            if (callback != null) {
-                                                callback.onSnapshotCommitted(filename);
-                                            }
-                                        })
-                                        .addOnFailureListener(activity, e -> {
-                                            sendFailure("Commit failed: " + e.getMessage(), filename, e);
-                                        });
-
-                            } catch (Exception e) {
-                                sendFailure("Write failed: " + e.getMessage(), filename, e);
-                            }
-                        });
+                if (coverImage != null && coverImage.length > 0) {
+                    try {
+                        Bitmap bitmap = decodeCoverImageSafe(coverImage);
+                        if (bitmap != null) {
+                            metaBuilder.setCoverImage(bitmap);
+                        }
+                    } catch (OutOfMemoryError e) {
+                        Log.e(TAG,
+                            "Cover image decode OOM (" + coverImage.length + " bytes). " +
+                            "Use max 640x360 resolution. Save continues without cover image.", e);
                     }
-                })
-                .addOnFailureListener(activity, e -> {
-                    Log.e(TAG, "Failed to open snapshot for commit: " + filename, e);
-                    sendFailure("Commit open failed: " + e.getMessage(), filename, e);
-                });
+                }
+
+                SnapshotMetadataChange metaChange = metaBuilder.build();
+
+                snapshotsClient.commitAndClose(snapshot, metaChange)
+                        .addOnSuccessListener(activity, metadata -> {
+                            Log.d(TAG, "Snapshot committed: " + filename);
+                            if (callback != null) {
+                                callback.onSnapshotCommitted(filename);
+                            }
+                        })
+                        .addOnFailureListener(activity, e -> {
+                            sendFailure("Commit failed: " + e.getMessage(), filename, e);
+                        });
+
+            } catch (Exception e) {
+                sendFailure("Write failed: " + e.getMessage(), filename, e);
+            }
+        });
     }
 
     public void deleteSnapshot(String filename) {
         Log.d(TAG, "Delete snapshot: " + filename);
 
-        snapshotsClient.open(filename, false, CONFLICT_RESOLUTION_POLICY_MANUAL)
-                .addOnSuccessListener(activity, dataOrConflict -> {
-                    if (dataOrConflict.isConflict()) {
-                        Log.w(TAG, "Conflict on delete open for: " + filename);
-                        handleConflict(dataOrConflict.getConflict());
-                    } else {
-                        SnapshotMetadata metadata = dataOrConflict.getData().getMetadata();
-                        snapshotsClient.delete(metadata)
-                                .addOnSuccessListener(activity, deleteResult -> {
-                                    Log.d(TAG, "Snapshot deleted: " + filename);
-                                    if (callback != null) {
-                                        callback.onSnapshotDeleted(filename);
-                                    }
-                                })
-                                .addOnFailureListener(activity, e -> {
-                                    sendFailure("Delete failed: " + e.getMessage(), filename, e);
-                                });
-                    }
-                })
-                .addOnFailureListener(activity, e -> sendOpenFailure("Delete open", filename, e));
+        openThen(OP_DELETE, filename, false, snapshot ->
+                snapshotsClient.delete(snapshot.getMetadata())
+                        .addOnSuccessListener(activity, deleteResult -> {
+                            Log.d(TAG, "Snapshot deleted: " + filename);
+                            if (callback != null) {
+                                callback.onSnapshotDeleted(filename);
+                            }
+                        })
+                        .addOnFailureListener(activity, e -> {
+                            sendFailure("Delete failed: " + e.getMessage(), filename, e);
+                        }));
     }
 
     public void showSavedGamesUI(String title, boolean allowAddButton, boolean allowDelete, int maxSnapshots) {
@@ -280,16 +269,35 @@ public class CloudSaveBridge {
         }
     }
 
-    private volatile SnapshotsClient.SnapshotConflict lastConflict;
+    private interface SnapshotAction {
+        void run(Snapshot snapshot);
+    }
 
-    // Which call raised the conflict. resolveConflict always answered with onSnapshotOpened,
-    // which on the C# side completes _openTcs and nothing else - so a conflict raised during
-    // a READ left _readTcs pending until its 30s JNI timeout fired. That is the shape behind
-    // the error_type=Canceled / error_type=Timeout restores with no preceding attempt.
-    private volatile String pendingConflictOp;
+    // Each conflict keeps the operation that raised it, so its answer reaches that operation and two conflicts never mix.
+    // An open or read goes on with the chosen snapshot. A commit or delete never touches a save the player has not seen:
+    // it keeps the server copy and ends with onConflictRejected, unless a commit was answered with UseLocalAndWrite.
+    private static final class PendingConflict {
+        final SnapshotsClient.SnapshotConflict conflict;
+        final String operation;
+        final String filename;
+        final SnapshotAction action;
 
-    private void handleConflict(SnapshotsClient.SnapshotConflict conflict) {
-        this.lastConflict = conflict;
+        PendingConflict(SnapshotsClient.SnapshotConflict conflict, String operation, String filename,
+                SnapshotAction action) {
+            this.conflict = conflict;
+            this.operation = operation;
+            this.filename = filename;
+            this.action = action;
+        }
+    }
+
+    private final Map<String, PendingConflict> pendingConflicts = new ConcurrentHashMap<>();
+    private final AtomicInteger conflictSequence = new AtomicInteger();
+
+    private void handleConflict(SnapshotsClient.SnapshotConflict conflict, String operation, String filename,
+            SnapshotAction action) {
+        String key = Integer.toString(conflictSequence.incrementAndGet());
+        pendingConflicts.put(key, new PendingConflict(conflict, operation, filename, action));
 
         ioExecutor.execute(() -> {
             try {
@@ -297,7 +305,8 @@ public class CloudSaveBridge {
                 Snapshot serverSnapshot = conflict.getSnapshot();
 
                 String localJson = serializeSnapshot(conflictSnapshot);
-                String serverJson = serializeSnapshot(serverSnapshot);
+                String serverJson = new JSONObject(serializeSnapshot(serverSnapshot))
+                        .put("conflictKey", key).put("conflictOperation", operation).toString();
 
                 byte[] localData = conflictSnapshot.getSnapshotContents().readFully();
                 byte[] serverData = serverSnapshot.getSnapshotContents().readFully();
@@ -307,72 +316,57 @@ public class CloudSaveBridge {
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Failed to handle conflict", e);
-                sendFailure("Conflict handling failed: " + e.getMessage(), null, e);
+                pendingConflicts.remove(key);
+                sendFailure("Conflict handling failed: " + e.getMessage(), filename, e);
             }
         });
     }
 
-    public void resolveConflict(String resolution, String nativeHandle) {
+    /** Resolves the conflict announced with this conflictKey, then ends the operation that raised it (see above). */
+    public void resolveConflict(String resolution, String conflictKey) {
         Log.d(TAG, "Resolve conflict: " + resolution);
 
-        if (lastConflict == null) {
+        PendingConflict pending = pendingConflicts.remove(conflictKey);
+        if (pending == null) {
             sendError(100, "No conflict to resolve", null);
             return;
         }
 
-        String conflictId = lastConflict.getConflictId();
-        Snapshot resolvedSnapshot;
+        boolean write = "UseLocalAndWrite".equals(resolution);
+        boolean local = write || "UseLocal".equals(resolution);
+        boolean reject = OP_DELETE.equals(pending.operation) || (OP_COMMIT.equals(pending.operation) && !write);
 
-        if ("UseLocal".equalsIgnoreCase(resolution) || "Local".equalsIgnoreCase(resolution)) {
-            resolvedSnapshot = lastConflict.getConflictingSnapshot();
-        } else {
-            resolvedSnapshot = lastConflict.getSnapshot();
-        }
+        Snapshot resolvedSnapshot = local && !reject
+                ? pending.conflict.getConflictingSnapshot()
+                : pending.conflict.getSnapshot();
 
-        snapshotsClient.resolveConflict(conflictId, resolvedSnapshot)
+        snapshotsClient.resolveConflict(pending.conflict.getConflictId(), resolvedSnapshot)
                 .addOnSuccessListener(activity, dataOrConflict -> {
-                    lastConflict = null;
                     if (dataOrConflict.isConflict()) {
                         Log.w(TAG, "Recursive conflict detected after resolution");
-                        handleConflict(dataOrConflict.getConflict());
+                        handleConflict(dataOrConflict.getConflict(), pending.operation, pending.filename, pending.action);
+                    } else if (reject) {
+                        sendConflictRejected(pending, dataOrConflict.getData());
                     } else {
-                        Snapshot snapshot = dataOrConflict.getData();
-                        String op = pendingConflictOp;
-                        pendingConflictOp = null;
-                        try {
-                            String filename = snapshot.getMetadata().getUniqueName();
-
-                            // A read that hit a conflict wants the CONTENTS, not a handle.
-                            // Answering with onSnapshotOpened completes the open task and
-                            // leaves the read waiting for a callback that never comes.
-                            if ("read".equals(op)) {
-                                ioExecutor.execute(() -> {
-                                    try {
-                                        byte[] data = snapshot.getSnapshotContents().readFully();
-                                        if (callback != null) {
-                                            callback.onSnapshotRead(filename, toBase64(data));
-                                        }
-                                    } catch (Exception e) {
-                                        sendFailure("Post-resolve read failed: " + e.getMessage(), filename, e);
-                                    }
-                                });
-                                return;
-                            }
-
-                            String snapshotJson = serializeSnapshot(snapshot);
-                            if (callback != null) {
-                                callback.onSnapshotOpened(filename, snapshotJson, false);
-                            }
-                        } catch (Exception e) {
-                            sendFailure("Post-resolve serialize failed: " + e.getMessage(), null, e);
-                        }
+                        pending.action.run(dataOrConflict.getData());
                     }
                 })
                 .addOnFailureListener(activity, e -> {
                     Log.e(TAG, "Failed to resolve conflict", e);
-                    lastConflict = null;
-                    sendFailure("Resolve failed: " + e.getMessage(), null, e);
+                    sendFailure("Resolve failed: " + e.getMessage(), pending.filename, e);
                 });
+    }
+
+    private void sendConflictRejected(PendingConflict pending, Snapshot server) {
+        Log.w(TAG, pending.operation + " stopped by a conflict, server copy kept: " + pending.filename);
+        try {
+            String serverJson = serializeSnapshot(server);
+            if (callback != null) {
+                callback.onConflictRejected(pending.operation, pending.filename, serverJson);
+            }
+        } catch (Exception e) {
+            sendFailure("Failed to serialize snapshot: " + e.getMessage(), pending.filename, e);
+        }
     }
 
     private static final int MAX_COVER_WIDTH = 640;
@@ -429,8 +423,8 @@ public class CloudSaveBridge {
 
     // SNAPSHOT_NOT_FOUND with createIfNotFound=false is an expected "no save exists"
     // answer, not an internal error: it maps to error code 3 (SnapshotNotFound in the
-    // C# contract) at Info level. Everything else stays code 100. commitSnapshot never
-    // routes here because it opens with createIfNotFound=true and cannot 404.
+    // C# contract) at Info level. Everything else stays code 100. A commit opens
+    // with createIfNotFound=true and cannot 404.
     private void sendOpenFailure(String operation, String filename, Exception e) {
         int status = (e instanceof ApiException) ? ((ApiException) e).getStatusCode() : 0;
         if (status == GamesClientStatusCodes.SNAPSHOT_NOT_FOUND) {
@@ -517,7 +511,7 @@ public class CloudSaveBridge {
             savedGamesLauncher.unregister();
         }
         ioExecutor.shutdownNow();
-        lastConflict = null;
+        pendingConflicts.clear();
         savedGamesCallback = null;
         callback = null;
     }

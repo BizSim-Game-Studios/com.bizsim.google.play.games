@@ -163,12 +163,14 @@ Requirements for serializable types:
 
 When two devices write to the same snapshot, Google detects a conflict:
 
-1. `OpenSnapshotAsync` returns `SnapshotHandle` with `hasConflict = true`
+1. The call that meets the conflict (open, read, commit, delete) waits; it does not time out while the game decides
 2. `OnConflictDetected` event fires with both local and server data
-3. Game calls `conflict.ResolveAsync(ConflictResolution.UseLocal)` or `UseServer`
-4. If no resolution within 60 seconds, defaults to `UseServer`
-5. Bridge calls `resolveConflict` on Java side
-6. Resolved handle returned for commit
+3. Game calls `conflict.ResolveAsync(ConflictResolution.UseLocal)` or `UseServer` (the first answer counts)
+4. With no subscriber, or no answer within `conflictTimeoutSeconds` (60), `UseServer` is chosen
+5. Bridge calls `resolveConflict` on Java side with the key of that conflict
+6. An open or read returns the chosen save. A commit or delete keeps the server copy, writes nothing and fails with
+   `GamesCloudSaveConflictException` (server handle and metadata in `ServerSnapshot`)
+7. Only a commit answered with `UseLocalAndWrite` writes over the server copy; choose it only after the player decided so
 
 ## Events Batching
 

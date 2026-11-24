@@ -19,6 +19,7 @@ namespace BizSim.Google.Play.Games
             3 => CloudSaveErrorType.SnapshotNotFound,
             4 => CloudSaveErrorType.ConflictTimeout,
             5 => CloudSaveErrorType.DataTooLarge,
+            6 => CloudSaveErrorType.Conflict,
             100 => CloudSaveErrorType.InternalError,
             _ => CloudSaveErrorType.Unknown
         };
@@ -61,6 +62,9 @@ namespace BizSim.Google.Play.Games
         /// <summary>Snapshot data exceeds 3MB limit per save slot (code 5).</summary>
         DataTooLarge = 5,
 
+        /// <summary>A commit or delete met a conflict; the server copy was kept and nothing was written (code 6).</summary>
+        Conflict = 6,
+
         /// <summary>Internal error in Google Play Games SDK (code 100).</summary>
         InternalError = 100
     }
@@ -73,6 +77,25 @@ namespace BizSim.Google.Play.Games
             : base(error?.errorCode ?? 0, $"Cloud save failed: {error}")
         {
             Error = error ?? throw new ArgumentNullException(nameof(error));
+        }
+    }
+
+    /// <summary>
+    /// A commit or delete met a save conflict. The conflict is resolved with the server copy and nothing was written or
+    /// deleted. Show the player the server save, then save again only if they choose to.
+    /// </summary>
+    public sealed class GamesCloudSaveConflictException : GamesCloudSaveException
+    {
+        /// <summary>Handle and metadata (time, played time, description) of the server copy that was kept.</summary>
+        public SnapshotHandle ServerSnapshot { get; }
+
+        public CloudSaveOperation Operation { get; }
+
+        public GamesCloudSaveConflictException(GamesCloudSaveError error, CloudSaveOperation operation, SnapshotHandle serverSnapshot)
+            : base(error)
+        {
+            Operation = operation;
+            ServerSnapshot = serverSnapshot;
         }
     }
 }

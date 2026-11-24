@@ -12,6 +12,11 @@ namespace BizSim.Google.Play.Games
     public class SavedGameConflict
     {
         /// <summary>
+        /// The call that met the conflict.
+        /// </summary>
+        public CloudSaveOperation operation;
+
+        /// <summary>
         /// Local snapshot (current device data).
         /// </summary>
         public SnapshotHandle localSnapshot;
@@ -39,7 +44,20 @@ namespace BizSim.Google.Play.Games
     }
 
     /// <summary>
-    /// Conflict resolution strategy.
+    /// Cloud save call that can meet a conflict.
+    /// </summary>
+    public enum CloudSaveOperation
+    {
+        Open = 0,
+        Read = 1,
+        Commit = 2,
+        Delete = 3
+    }
+
+    /// <summary>
+    /// Conflict resolution strategy. Open and read go on with the chosen save. A commit or delete keeps the server copy and
+    /// fails with <see cref="GamesCloudSaveConflictException"/>, whatever is chosen, except a commit answered with
+    /// <see cref="UseLocalAndWrite"/>.
     /// </summary>
     public enum ConflictResolution
     {
@@ -57,6 +75,12 @@ namespace BizSim.Google.Play.Games
         /// Merge both (game-specific logic required).
         /// Not implemented in this version - falls back to UseLocal.
         /// </summary>
-        UseManual = 2
+        UseManual = 2,
+
+        /// <summary>
+        /// Commit only: write this save over the server copy. Choose it only after the player decided so.
+        /// On an open or read it means UseLocal; a delete fails as with any other answer.
+        /// </summary>
+        UseLocalAndWrite = 3
     }
 }
