@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.2] - 2026-11-25
+
+1.6.1 was not published.
+
+### Added
+- `CloudSaveErrorType.Conflict` (6) and `GamesCloudSaveConflictException` with `Operation` and `ServerSnapshot` (handle and
+  metadata of the server copy). `SavedGameConflict.operation` tells which call met the conflict.
+- `ConflictResolution.UseLocalAndWrite`: a commit that met a conflict writes over the server copy. Choose it only after the
+  player decided so.
+
+### Changed
+- **A save that meets a conflict fails with a conflict error; it no longer waits out the timeout.** The server copy is kept and
+  nothing is written. A delete that meets a conflict fails the same way. Open and read still go on with the chosen save.
+  `UseLocal` as the answer to a commit does not write; only `UseLocalAndWrite` does.
+- `SaveAsync` has no open of its own any more (a commit opens the slot), so the same rule covers the whole save.
+  `OnSnapshotOpened` is not raised by a save.
+
+### Fixed
+- `SavedGameConflict.ResolveAsync` takes effect. The first answer counts; `UseManual` means `UseLocal`, as documented.
+- A conflict answer reaches the call that met it. A result no longer reaches another call, and two conflicts at the same time
+  no longer mix.
+- With an `OnConflictDetected` subscriber that does not answer in `conflictTimeoutSeconds`, `UseServer` is chosen. The waiting
+  call does not time out meanwhile.
+
+### Porting (users of this package)
+- Catch `GamesCloudSaveConflictException` around a save or delete (it is a `GamesCloudSaveException`), show the player the
+  server save and restore it, or save again after their choice.
+
 ## [1.6.0] - 2026-11-06
 
 ### Added
