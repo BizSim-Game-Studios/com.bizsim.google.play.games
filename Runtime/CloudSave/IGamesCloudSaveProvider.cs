@@ -78,8 +78,8 @@ namespace BizSim.Google.Play.Games
             bool allowDelete = true, int maxSnapshots = 5, CancellationToken ct = default);
 
         /// <summary>
-        /// Convenience method: Save data in one call (Open → Write → Commit).
-        /// Handles conflicts automatically with timeout protection.
+        /// Convenience method: save data in one call.
+        /// On a conflict nothing is written and GamesCloudSaveConflictException is thrown (see ConflictResolution.UseLocalAndWrite).
         ///
         /// ⚠️ IMPORTANT: For full Google Play Quality Checklist compliance, use CommitSnapshotAsync
         /// with cover image and playedTimeMillis. This simplified method is for basic usage only.

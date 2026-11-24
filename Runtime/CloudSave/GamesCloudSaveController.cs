@@ -141,6 +141,11 @@ namespace BizSim.Google.Play.Games
             }
         }
 
+        // A commit opens the slot itself, so a save has no open of its own: every conflict meets the commit rule
+        // (server copy kept, GamesCloudSaveConflictException). The handle has the format the Java bridge gives out.
+        private static SnapshotHandle SlotHandle(string filename) =>
+            new SnapshotHandle { filename = filename, nativeHandle = "snapshot:" + filename };
+
         public async Task SaveAsync(string filename, byte[] data, string description = null, CancellationToken ct = default)
         {
             var config = GamesServicesManager.Config;
@@ -148,18 +153,14 @@ namespace BizSim.Google.Play.Games
                 BizSimGamesLogger.Warning("[CloudSave] Using SaveAsync without metadata. " +
                     "For Sidekick Tier 2 compliance, use the SaveAsync(filename, data, SaveGameMetadata) overload.");
 
-            var handle = await OpenSnapshotAsync(filename, true, ct);
-
-            await CommitSnapshotAsync(handle, data, description, 0, null, ct);
+            await CommitSnapshotAsync(SlotHandle(filename), data, description, 0, null, ct);
         }
 
         public async Task SaveAsync(string filename, byte[] data, SaveGameMetadata metadata, CancellationToken ct = default)
         {
             ValidateMetadata(metadata);
 
-            var handle = await OpenSnapshotAsync(filename, true, ct);
-
-            await CommitSnapshotAsync(handle, data, metadata?.description,
+            await CommitSnapshotAsync(SlotHandle(filename), data, metadata?.description,
                 metadata?.playedTimeMillis ?? 0, metadata?.coverImage, ct);
         }
 
